@@ -26,6 +26,12 @@
 #define RETURN_CODE_3       3
 #define RETURN_CODE_4       4
 
+struct MessageData
+{
+	// header stuff
+	// idk?
+};
+
 class NetworkClient
 {
 public:
@@ -42,7 +48,6 @@ public:
 	void Shutdown();
 	void SendMessages(SOCKET clientSocket);
 	void ReceiveMessages(SOCKET udpSocket);
-	void ProcessMessages(std::string message);
 
 private:
 	SOCKET udpSocket;

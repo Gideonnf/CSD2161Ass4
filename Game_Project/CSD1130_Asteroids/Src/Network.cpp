@@ -1,4 +1,5 @@
 #include "Network.h"
+#define SLEEP_TIME 500
 
 
 int NetworkClient::Init()
@@ -102,14 +103,50 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 {
 	while (connected)
 	{
+		std::string outMsg;
+		{
+			std::lock_guard<std::mutex> lock(outMutex);
+			if (!outgoingMessages.empty())
+			{
+				outMsg = outgoingMessages.front();
+				outgoingMessages.pop();
+			}
+		}
 
+		// if its not an empty msg
+		if (!outMsg.empty())
+		{
+			// send it?? process it?? idk
+		}
+
+		Sleep(SLEEP_TIME);
 	}
 }
 
 void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 {
+	sockaddr_in senderAddr;
+	int senderAddrSize = sizeof(senderAddr);
+	
 	while (connected)
 	{
+		char buffer[MAX_STR_LEN];
+		memset(buffer, 0, MAX_STR_LEN);
+		int receivedBytes = recvfrom(udpSocket, buffer, MAX_STR_LEN, 0,
+			reinterpret_cast<sockaddr*>(&senderAddr), &senderAddrSize);
 
+		if (receivedBytes == SOCKET_ERROR)
+		{
+			buffer[receivedBytes] = '\0';
+
+			// idk if we're going to process the string here into a message struct
+			// or leave it as a string then process it in gamestate_asteroids or smth
+
+			//std::lock_guard<std::mutex> lock(inMutex);
+			//incomingMessages.push(buffer);
+
+		}
+
+		Sleep(SLEEP_TIME);
 	}
 }

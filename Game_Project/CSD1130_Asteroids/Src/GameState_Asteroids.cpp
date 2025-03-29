@@ -406,6 +406,7 @@ void GameStateAsteroidsInit(void)
 
 
 	// create the main ship
+	// i think sending info of ship will be done in update
 	AEVec2 scale;
 	AEVec2 pos, vel;
 	AEVec2Set(&scale, SHIP_SCALE_X, SHIP_SCALE_Y);
@@ -417,12 +418,15 @@ void GameStateAsteroidsInit(void)
 	spShip->posPrev.x = spShip->posCurr.x;
 	spShip->posPrev.y = spShip->posCurr.y;
 
+
+	// no creating anything new i think
+	// cause it has to send messages so i comment out for now
 	// Create 4 random asteroids
-	NewAsteroidWave();
+	//NewAsteroidWave();
 
 	// Testing Powerups
-	for(int i = 0; i < 2; ++i)
-		CreateRandPowerup();
+	//for(int i = 0; i < 2; ++i)
+	//	CreateRandPowerup();
 
 	 //create the static wall
 	AEVec2Set(&scale, WALL_SCALE_X, WALL_SCALE_Y);
