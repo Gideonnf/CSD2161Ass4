@@ -150,3 +150,19 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 		Sleep(SLEEP_TIME);
 	}
 }
+
+std::string NetworkClient::GetIncomingMessage()
+{
+	std::string outMsg{};
+	{
+		std::lock_guard<std::mutex> lock(inMutex);
+		if (!incomingMessages.empty())
+		{
+			outMsg = incomingMessages.front();
+			incomingMessages.pop();
+		}
+	}
+
+	// will return empty string if nth in incoming message
+	return outMsg;
+}

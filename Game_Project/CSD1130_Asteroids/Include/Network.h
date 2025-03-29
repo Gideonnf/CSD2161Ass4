@@ -48,6 +48,7 @@ public:
 	void Shutdown();
 	void SendMessages(SOCKET clientSocket);
 	void ReceiveMessages(SOCKET udpSocket);
+	std::string GetIncomingMessage();
 
 private:
 	SOCKET udpSocket;

@@ -15,6 +15,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
  /******************************************************************************/
 #ifndef CSD1130_GAME_STATE_PLAY_H_
 #define CSD1130_GAME_STATE_PLAY_H_
+#include <string>
 
 // ---------------------------------------------------------------------------
 
@@ -42,6 +43,11 @@ void GameStateAsteroidsFree(void);
 \brief Unload assets for asteroid game
 ***************************************************************************/
 void GameStateAsteroidsUnload(void);
+
+/*!*************************************************************************
+\brief For receiving messages
+***************************************************************************/
+void GameStateAsteroidsProcessMessage(std::string msg);
 
 // ---------------------------------------------------------------------------
 

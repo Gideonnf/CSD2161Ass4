@@ -98,6 +98,9 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 		{
 			AESysFrameStart();
 
+			//std::lock_guard<std::mutex> lock();
+			GameStateProcessMessage(NetworkClient::Instance().GetIncomingMessage());
+
 			// Update the current game state
 			GameStateUpdate();
 			// Render the game state

@@ -31,6 +31,7 @@ void (*GameStateUpdate)()	= 0;
 void (*GameStateDraw)()		= 0;
 void (*GameStateFree)()		= 0;
 void (*GameStateUnload)()	= 0;
+void (*GameStateProcessMessage)(std::string msg) = 0;
 
 /******************************************************************************/
 /*!
@@ -71,6 +72,7 @@ void GameStateMgrUpdate()
 		GameStateDraw = GameStateAsteroidsDraw;
 		GameStateFree = GameStateAsteroidsFree;
 		GameStateUnload = GameStateAsteroidsUnload;
+		GameStateProcessMessage = GameStateAsteroidsProcessMessage;
 		break;
 	case GS_MENU:
 		GameStateLoad = GameStateMenuLoad;

@@ -789,6 +789,18 @@ void GameStateAsteroidsUnload(void)
 
 /******************************************************************************/
 /*!
+	Process messages
+*/
+/******************************************************************************/
+
+void GameStateAsteroidsProcessMessage(std::string msg)
+{
+	// do any message processing here
+	// get which type of msg or smth maybe
+}
+
+/******************************************************************************/
+/*!
 	Create a game object
 */
 /******************************************************************************/
