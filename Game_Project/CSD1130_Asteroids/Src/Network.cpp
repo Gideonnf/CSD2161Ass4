@@ -1,13 +1,30 @@
 #include "Network.h"
+#include <filesystem>
+#include <unordered_map>
+#include <map>
+
+#include <filesystem>
+#include <map>
+#include <iostream>			// cout, cerr
+#include <string>			// string
+#include <vector>
+#include <sstream>
+
+#include <fstream>
+
+
+//#define WINSOCK_VERSION     2
+
+
 #define SLEEP_TIME 500
 
 
 int NetworkClient::Init()
 {
 	// read from text file
-	std::string host{};
-	std::string udpPortString;
-	std::string clientUDPPortString;
+	std::string host = "192.168.1.13";
+	std::string udpPortString = "9999";
+	std::string clientUDPPortString = "8888";
 
 	// -------------------------------------------------------------------------
 	// Start up Winsock, asking for version 2.2.
@@ -75,8 +92,8 @@ int NetworkClient::Init()
 	udpServerAddress.sin_port = htons(std::stoi(udpPortString));
 	inet_pton(udpServerAddress.sin_family, host.c_str(), &udpServerAddress.sin_addr);
 
-	recvThread = std::thread(&NetworkClient::ReceiveMessages, udpSocket);
-	senderThread = std::thread(&NetworkClient::SendMessages, udpSocket);
+	recvThread = std::thread(&NetworkClient::ReceiveMessages, this, udpSocket);
+	senderThread = std::thread(&NetworkClient::SendMessages, this, udpSocket);
 }
 
 void NetworkClient::Shutdown()

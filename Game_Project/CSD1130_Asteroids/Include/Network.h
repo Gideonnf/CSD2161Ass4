@@ -1,24 +1,19 @@
-#pragma once
-#include <string>
-#include "Windows.h"		// Entire Win32 API...
-#include "winsock2.h"		// ...or Winsock alone
-#include "ws2tcpip.h"		// getaddrinfo()
-#include <filesystem>
-#include <unordered_map>
-#include <map>
-#include <thread>
-#include <filesystem>
-#include <map>
-#include <mutex>
-#include <iostream>			// cout, cerr
-#include <string>			// string
-#include <vector>
-#include <sstream>
-#include <atomic>
-#include <fstream>
-#include <queue>
+#ifndef NETWORK_H
+#define NETWORK_H
 
-//#define WINSOCK_VERSION     2
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
+#endif
+
+#include <string>
+#include <thread>
+#include <atomic>
+#include <queue>
+#include <mutex>
+
 #define WINSOCK_SUBVERSION  2
 #define MAX_STR_LEN         2048
 #define RETURN_CODE_1       1
@@ -72,3 +67,4 @@ private:
 	*/
 
 };
+#endif
