@@ -172,7 +172,7 @@ namespace
 	// For seeding srand
 	time_t timeVar;
 
-	f64 waveTimer;
+	//f64 waveTimer;
 
 	bool gameOver;
 }
@@ -346,7 +346,7 @@ void GameStateAsteroidsLoad(void)
 /******************************************************************************/
 void GameStateAsteroidsInit(void)
 {
-	waveTimer = 0.0f;
+	//waveTimer = 0.0f;
 
 	AEVec2Set(&bgGO.goScale, SCREEN_WIDTH, SCREEN_HEIGHT);
 	AEVec2Set(&bgGO.goPosition, 0, 0);
@@ -519,13 +519,13 @@ void GameStateAsteroidsUpdate(void)
 	}
 
 	// Check wave timer
-	waveTimer += AEFrameRateControllerGetFrameTime();
-	if (waveTimer >= WAVE_TIME)
-	{
-		// Spawn a new wave if it reaches wave time
-		NewAsteroidWave();
-		waveTimer = 0.0f;
-	}
+	//waveTimer += AEFrameRateControllerGetFrameTime();
+	//if (waveTimer >= WAVE_TIME)
+	//{
+	//	// Spawn a new wave if it reaches wave time
+	//	NewAsteroidWave();
+	//	waveTimer = 0.0f;
+	//}
 
 
 	// ======================================================================
@@ -1026,22 +1026,22 @@ void CreateAsteroid(AEVec2 _pos, AEVec2 _vel, AEVec2 _scale)
 /// <summary>
 /// Spawn the wave of asteroid and power up
 /// </summary>
-void NewAsteroidWave()
-{
-	// Create 4 asteroids every wave
-
-	// Spawn from bottom of screen
-	RandomiseAsteroid(AEGfxGetWinMinX(), AEGfxGetWinMaxX(), AEGfxGetWinMinY(), AEGfxGetWinMinY());
-	// Spawn from top of screen
-	RandomiseAsteroid(AEGfxGetWinMinX(), AEGfxGetWinMaxX(), AEGfxGetWinMaxY(), AEGfxGetWinMaxY());
-	//// Spawn from Left of screen
-	RandomiseAsteroid(AEGfxGetWinMinX(), AEGfxGetWinMinX(), AEGfxGetWinMinY(), AEGfxGetWinMaxY());
-	//// Spawn from Right of screen
-	RandomiseAsteroid(AEGfxGetWinMaxX(), AEGfxGetWinMaxX(), AEGfxGetWinMinY(), AEGfxGetWinMaxY());
-
-	// Create a power up when a wave spawns
-	//CreateRandPowerup();
-}
+//void NewAsteroidWave()
+//{
+//	// Create 4 asteroids every wave
+//
+//	// Spawn from bottom of screen
+//	RandomiseAsteroid(AEGfxGetWinMinX(), AEGfxGetWinMaxX(), AEGfxGetWinMinY(), AEGfxGetWinMinY());
+//	// Spawn from top of screen
+//	RandomiseAsteroid(AEGfxGetWinMinX(), AEGfxGetWinMaxX(), AEGfxGetWinMaxY(), AEGfxGetWinMaxY());
+//	//// Spawn from Left of screen
+//	RandomiseAsteroid(AEGfxGetWinMinX(), AEGfxGetWinMinX(), AEGfxGetWinMinY(), AEGfxGetWinMaxY());
+//	//// Spawn from Right of screen
+//	RandomiseAsteroid(AEGfxGetWinMaxX(), AEGfxGetWinMaxX(), AEGfxGetWinMinY(), AEGfxGetWinMaxY());
+//
+//	// Create a power up when a wave spawns
+//	//CreateRandPowerup();
+//}
 
 /// <summary>
 /// Create a randomised asteroid within a fixed boundary
@@ -1050,28 +1050,28 @@ void NewAsteroidWave()
 /// <param name="max_xPos">The maximum AABB x pos</param>
 /// <param name="min_yPos">The minimum AABB y</param>
 /// <param name="max_yPos">The maximum AABB y</param>
-void RandomiseAsteroid(f32 min_xPos, f32 max_xPos, f32 min_yPos, f32 max_yPos)
-{
-	AEVec2 pos, vel, scale;
-	pos.x = AERandFloat() * (max_xPos - min_xPos) + min_xPos;
-	pos.y = AERandFloat() * (max_yPos - min_yPos) + min_yPos;
-	float randAng = AERandFloat() * 360;
-
-	AEVec2 dir;
-	AEVec2Set(&dir, cosf(randAng), sinf(randAng));
-	AEVec2Normalize(&dir, &dir);
-	AEVec2Zero(&vel);
-
-	AEVec2Scale(&dir, &dir, ASTEROID_ACCEL);
-	AEVec2Add(&vel, &vel, &dir);
-
-	float randScaleX = AERandFloat() * (ASTEROID_MAX_SCALE_X - ASTEROID_MIN_SCALE_X) + ASTEROID_MIN_SCALE_X;
-	float randScaleY = AERandFloat() * (ASTEROID_MAX_SCALE_Y - ASTEROID_MIN_SCALE_Y) + ASTEROID_MIN_SCALE_Y;
-	AEVec2Set(&scale, randScaleX, randScaleY);
-
-	// Create after randomising
-	CreateAsteroid(pos, vel, scale);
-}
+//void RandomiseAsteroid(f32 min_xPos, f32 max_xPos, f32 min_yPos, f32 max_yPos)
+//{
+//	AEVec2 pos, vel, scale;
+//	pos.x = AERandFloat() * (max_xPos - min_xPos) + min_xPos;
+//	pos.y = AERandFloat() * (max_yPos - min_yPos) + min_yPos;
+//	float randAng = AERandFloat() * 360;
+//
+//	AEVec2 dir;
+//	AEVec2Set(&dir, cosf(randAng), sinf(randAng));
+//	AEVec2Normalize(&dir, &dir);
+//	AEVec2Zero(&vel);
+//
+//	AEVec2Scale(&dir, &dir, ASTEROID_ACCEL);
+//	AEVec2Add(&vel, &vel, &dir);
+//
+//	float randScaleX = AERandFloat() * (ASTEROID_MAX_SCALE_X - ASTEROID_MIN_SCALE_X) + ASTEROID_MIN_SCALE_X;
+//	float randScaleY = AERandFloat() * (ASTEROID_MAX_SCALE_Y - ASTEROID_MIN_SCALE_Y) + ASTEROID_MIN_SCALE_Y;
+//	AEVec2Set(&scale, randScaleX, randScaleY);
+//
+//	// Create after randomising
+//	CreateAsteroid(pos, vel, scale);
+//}
 
 /// <summary>
 /// Reset the ship when it gets hit by an asteroid
