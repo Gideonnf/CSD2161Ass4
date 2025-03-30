@@ -15,7 +15,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 /******************************************************************************/
 
 #include "main.h"
-
+#include "ProcessReceive.h"
 /******************************************************************************/
 /*!
 	Define constant variables that we use in our game
@@ -679,6 +679,9 @@ void GameStateAsteroidsProcessMessage(std::string msg)
 	switch (msgID)
 	{
 		// switch cases
+	case 0: // temporary
+		ProcessNewAsteroid(msg, gameData);
+		break;
 	}
 
 }
