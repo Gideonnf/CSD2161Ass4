@@ -37,6 +37,7 @@ public:
 
 	NetworkClient(const NetworkClient&) = delete;
 	NetworkClient& operator=(const NetworkClient&) = delete;
+	~NetworkClient();
 	NetworkClient() = default;
 
 	int Init();
@@ -47,6 +48,8 @@ public:
 
 private:
 	SOCKET udpSocket;
+	std::string serverIP;
+	std::string serverPort;
 	std::atomic_bool connected{ false };
 
 	std::thread senderThread;

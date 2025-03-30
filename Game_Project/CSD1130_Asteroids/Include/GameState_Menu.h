@@ -49,4 +49,9 @@ void GameStateMenuFree();
 ***************************************************************************/
 void GameStateMenuUnload();
 
+/*!*************************************************************************
+\brief Process any messages
+***************************************************************************/
+void GameStateMenuProcessMessage(std::string msg);
+
 #endif
