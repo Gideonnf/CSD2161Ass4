@@ -22,8 +22,8 @@
 int NetworkClient::Init()
 {
 	// read from text file
-	std::string host = "192.168.1.13";
-	std::string udpPortString = "9999";
+	std::string host = "192.168.1.13"; // Server IP
+	std::string udpPortString = "9999"; // Server Port
 	std::string clientUDPPortString = "8888";
 
 	// -------------------------------------------------------------------------
@@ -171,9 +171,10 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 			// idk if we're going to process the string here into a message struct
 			// or leave it as a string then process it in gamestate_asteroids or smth
 
+			//{
 			//std::lock_guard<std::mutex> lock(inMutex);
 			//incomingMessages.push(buffer);
-
+			//}
 		}
 
 		Sleep(SLEEP_TIME);
