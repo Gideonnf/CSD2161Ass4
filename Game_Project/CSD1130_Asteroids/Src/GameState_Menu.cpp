@@ -148,4 +148,8 @@ void GameStateMenuUnload()
 	AEGfxTextureUnload(bgGO.meshTex);
 }
 
+void GameStateMenuProcessMessage(std::string msg)
+{
+
+}
 

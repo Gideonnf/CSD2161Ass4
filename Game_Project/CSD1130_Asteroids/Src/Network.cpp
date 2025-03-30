@@ -93,27 +93,39 @@ int NetworkClient::Init()
 	inet_pton(udpServerAddress.sin_family, host.c_str(), &udpServerAddress.sin_addr);
 
 	recvThread = std::thread(&NetworkClient::ReceiveMessages, this, udpSocket);
+	recvThread.detach();
 	senderThread = std::thread(&NetworkClient::SendMessages, this, udpSocket);
+	senderThread.detach();
+}
+
+NetworkClient::~NetworkClient()
+{
+	Shutdown();
 }
 
 void NetworkClient::Shutdown()
 {
-	connected = false;
 
-	// join back the two threads
-	if (senderThread.joinable())
-		senderThread.join();
-	if (recvThread.joinable())
-		recvThread.join();
-
-	int errorCode = shutdown(udpSocket, SD_SEND);
-	if (SOCKET_ERROR == errorCode)
+	if (connected)
 	{
-		std::cerr << "shutdown() failed" << std::endl;
-	}
+		connected = false;
 
-	closesocket(udpSocket);
-	WSACleanup();
+		// join back the two threads
+		//if (senderThread.joinable())
+		//	senderThread.join();
+		//if (recvThread.joinable())
+		//	recvThread.join();
+
+		int errorCode = shutdown(udpSocket, SD_SEND);
+		if (SOCKET_ERROR == errorCode)
+		{
+			std::cerr << "shutdown() failed" << std::endl;
+		}
+
+		closesocket(udpSocket);
+		WSACleanup();
+
+	}
 }
 
 void NetworkClient::SendMessages(SOCKET clientSocket)
@@ -152,7 +164,7 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 		int receivedBytes = recvfrom(udpSocket, buffer, MAX_STR_LEN, 0,
 			reinterpret_cast<sockaddr*>(&senderAddr), &senderAddrSize);
 
-		if (receivedBytes == SOCKET_ERROR)
+		if (receivedBytes != SOCKET_ERROR)
 		{
 			buffer[receivedBytes] = '\0';
 

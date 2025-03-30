@@ -76,7 +76,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	GameStateMgrInit(GS_MENU);
 
 	// establish connection???
-	//NetworkClient::Instance().Init();
+	NetworkClient::Instance().Init();
 
 	while(gGameStateCurr != GS_QUIT)
 	{
@@ -100,7 +100,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			AESysFrameStart();
 
 			//std::lock_guard<std::mutex> lock();
-			//GameStateProcessMessage(NetworkClient::Instance().GetIncomingMessage());
+			GameStateProcessMessage(NetworkClient::Instance().GetIncomingMessage());
 
 			// Update the current game state
 			GameStateUpdate();

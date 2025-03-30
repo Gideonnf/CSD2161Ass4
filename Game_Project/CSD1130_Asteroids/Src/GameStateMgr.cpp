@@ -81,6 +81,7 @@ void GameStateMgrUpdate()
 		GameStateDraw = GameStateMenuDraw;
 		GameStateFree = GameStateMenuFree;
 		GameStateUnload = GameStateMenuUnload;
+		GameStateProcessMessage = GameStateMenuProcessMessage;
 		break;
 	default:
 		AE_FATAL_ERROR("invalid state!!");
