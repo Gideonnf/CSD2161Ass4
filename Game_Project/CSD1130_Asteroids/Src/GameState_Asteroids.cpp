@@ -24,8 +24,6 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 const unsigned int	GAME_OBJ_NUM_MAX		= 32;			// The total number of different objects (Shapes)
 const unsigned int	GAME_OBJ_INST_NUM_MAX	= 2048;			// The total number of different game object instances
 
-
-const unsigned int	SHIP_INITIAL_NUM		= 3;			// initial number of ship lives
 const float			SHIP_SCALE_X			= 45.0f;		// ship scale x
 const float			SHIP_SCALE_Y			= 45.0f;		// ship scale y
 const float			BULLET_SCALE_X			= 20.0f;		// bullet scale x
@@ -61,8 +59,8 @@ enum TYPE
 	TYPE_SHIP = 0,
 	TYPE_BULLET,
 	TYPE_ASTEROID,
-	TYPE_WALL,
-	TYPE_POWERUP,
+	//TYPE_WALL,
+	//TYPE_POWERUP,
 	TYPE_NUM
 };
 
@@ -135,9 +133,6 @@ static GameObjInst *		spShip;										// Pointer to the "Ship" game object inst
 // pointer to the wall object
 static GameObjInst *		spWall;										// Pointer to the "Wall" game object instance
 
-// number of ship available (lives 0 = game over)
-static long					sShipLives;									// The number of lives left
-
 // the score = number of asteroid destroyed
 static unsigned long		sScore;										// Current score
 
@@ -149,8 +144,6 @@ static bool onValueChange = true;
 GameObjInst *		gameObjInstCreate (unsigned long type, AEVec2* scale,
 											   AEVec2 * pPos, AEVec2 * pVel, float dir);
 void				gameObjInstDestroy(GameObjInst * pInst);
-
-void				Helper_Wall_Collision();
 
 // To help render game object instances that holds mesh textures
 void RenderMeshObj(GameObjInst* GO);
@@ -171,20 +164,13 @@ namespace
 	s8 fontSize;
 
 	TextObj scoreText;
-	TextObj liveText;
 	TextObj endText;
 	TextObj endText2;
 
-	TextObj textList[7];
+	TextObj textList[4];
 
 	// For seeding srand
 	time_t timeVar;
-
-	// Keep track of ship's abilities here
-	int shipShield;
-	int shipShotgun;
-	f64 shieldTimer;
-	f64 shotgunTimer;
 
 	f64 waveTimer;
 
@@ -292,7 +278,7 @@ void GameStateAsteroidsLoad(void)
 	// create the wall shape
 	// =========================
 
-	pObj = sGameObjList + sGameObjNum++;
+	/*pObj = sGameObjList + sGameObjNum++;
 	pObj->type = TYPE_WALL;
 
 	AEGfxMeshStart();
@@ -306,29 +292,29 @@ void GameStateAsteroidsLoad(void)
 		0.5f, 0.5f, 0x6600FF00, 0.0f, 0.0f);
 
 	pObj->pMesh = AEGfxMeshEnd();
-	AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");	
+	AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");	*/
 
 	// =========================
 	// create power up shape
 	// =========================
 
-	pObj = sGameObjList + sGameObjNum++;
-	pObj->type = TYPE_POWERUP;
+	//pObj = sGameObjList + sGameObjNum++;
+	//pObj->type = TYPE_POWERUP;
 
-	AEGfxMeshStart();
-	AEGfxTriAdd(
-		-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,  // bottom-left
-		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,   // bottom-right
-		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);  // top-left
+	//AEGfxMeshStart();
+	//AEGfxTriAdd(
+	//	-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,  // bottom-left
+	//	0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,   // bottom-right
+	//	-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);  // top-left
 
-	AEGfxTriAdd(
-		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,   // bottom-right
-		0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,    // top-right
-		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);  // top-left
+	//AEGfxTriAdd(
+	//	0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,   // bottom-right
+	//	0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,    // top-right
+	//	-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);  // top-left
 
-	pObj->pMesh = AEGfxMeshEnd();
-	pObj->pTexture = powerUpTexture;
-	AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
+	//pObj->pMesh = AEGfxMeshEnd();
+	//pObj->pTexture = powerUpTexture;
+	//AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
 
 	// Create the Background object
 
@@ -351,8 +337,6 @@ void GameStateAsteroidsLoad(void)
 	fontSize = 36;
 	textFont = AEGfxCreateFont("../Resources/Fonts/Arial-Italic.ttf", fontSize);
 
-	shieldTimer = 0.0f;
-	shotgunTimer = 0.0f;
 }
 
 /******************************************************************************/
@@ -374,35 +358,20 @@ void GameStateAsteroidsInit(void)
 	textList[0].Font = &textFont;
 	textList[0].str = "Score: ";
 
-	AEVec2Set(&textList[1].pos, (SCREEN_WIDTH * 0.45f * -1), (SCREEN_HEIGHT * 0.45f));
-	textList[1].textSize = 20;
+	AEVec2Set(&textList[1].pos, 0, 0);
+	textList[1].textSize = 25;
 	textList[1].Font = &textFont;
-	textList[1].str = "Ships Left: ";
+	textList[1].str = "GAME OVER";
 
-	AEVec2Set(&textList[2].pos, 0, 0);
-	textList[2].textSize = 25;
+	AEVec2Set(&textList[2].pos, 0, -20);
+	textList[2].textSize = 12;
 	textList[2].Font = &textFont;
-	textList[2].str = "GAME OVER";
+	textList[2].str = "Press R to restart";
 
-	AEVec2Set(&textList[3].pos, 0, -20);
+	AEVec2Set(&textList[3].pos, 0, -40);
 	textList[3].textSize = 12;
 	textList[3].Font = &textFont;
-	textList[3].str = "Press R to restart";
-
-	AEVec2Set(&textList[4].pos, (SCREEN_WIDTH * 0.445f * -1), (SCREEN_HEIGHT * 0.42f));
-	textList[4].textSize = 20;
-	textList[4].Font = &textFont;
-	textList[4].str = "Shield is Active";
-
-	AEVec2Set(&textList[5].pos, (SCREEN_WIDTH * 0.44f * -1), (SCREEN_HEIGHT * 0.39f));
-	textList[5].textSize = 20;
-	textList[5].Font = &textFont;
-	textList[5].str = "Shotgun is Active";
-
-	AEVec2Set(&textList[6].pos, 0, -40);
-	textList[6].textSize = 12;
-	textList[6].Font = &textFont;
-	textList[6].str = "Press B to go back to menu";
+	textList[3].str = "Press B to go back to menu";
 
 
 	// create the main ship
@@ -429,15 +398,15 @@ void GameStateAsteroidsInit(void)
 	//	CreateRandPowerup();
 
 	 //create the static wall
-	AEVec2Set(&scale, WALL_SCALE_X, WALL_SCALE_Y);
+	/*AEVec2Set(&scale, WALL_SCALE_X, WALL_SCALE_Y);
 	AEVec2 position;
 	AEVec2Set(&position, 300.0f, 150.0f);
 	spWall = gameObjInstCreate(TYPE_WALL, &scale, &position, nullptr, 0.0f);
-	AE_ASSERT(spWall);
+	AE_ASSERT(spWall);*/
 
 	// reset the score and the number of ships
 	sScore      = 0;
-	sShipLives  = SHIP_INITIAL_NUM;
+	
 
 	gameOver = false;
 	onValueChange = true; // To reprint the console if player choose to restart
@@ -518,7 +487,7 @@ void GameStateAsteroidsUpdate(void)
 		AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
 		gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, spShip->dirCurr);
 
-		if (shipShotgun == 1)
+		/*if (shipShotgun == 1)
 		{
 			float bulletOffset = 0.1f;
 			{
@@ -546,7 +515,7 @@ void GameStateAsteroidsUpdate(void)
 				AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
 				gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, spShip->dirCurr + bulletOffset);
 			}
-		}
+		}*/
 	}
 
 	// Check wave timer
@@ -585,7 +554,7 @@ void GameStateAsteroidsUpdate(void)
 	// check for dynamic-static collisions (one case only: Ship vs Wall)
 	// [DO NOT UPDATE THIS PARAGRAPH'S CODE]
 	// ======================================================================
-	Helper_Wall_Collision();
+	//Helper_Wall_Collision();
 
 	// ======================================================================
 	// check for dynamic-dynamic collisions
@@ -595,9 +564,6 @@ void GameStateAsteroidsUpdate(void)
 
 	// Update the GOs (i.e movement, etc)
 	UpdateGO();
-
-	// Update powerups timers here
-	UpdatePowerups();
 		
 	// =====================================================================
 	// calculate the matrix for all objects
@@ -671,12 +637,10 @@ void GameStateAsteroidsDraw(void)
 	}
 
 	// Handles the rendering of texture objects
-	for (int i = 0; i < 7; ++i)
+	for (int i = 0; i < 4; ++i)
 	{
 		// Specific checks so  certain text dont render until required
-		if (!gameOver && (i == 2 || i == 3 || i == 6)) continue;
-		if (shipShield == 0 && i == 4) continue;
-		if (shipShotgun == 0 && i == 5) continue;
+		if (!gameOver && (i == 1 || i == 2 || i == 3)) continue;
 		
 		if (gameOver)
 		{
@@ -685,20 +649,13 @@ void GameStateAsteroidsDraw(void)
 				textList[2].str = "GAME OVER! YOU WON";
 
 			}
-			else if (sShipLives <= 0)
-			{
-				textList[2].str = "GAME OVER! YOU LOST";
-			}
 		}
 
-		// 0 and 1 is for score and lives
-		// 2 3 and 6 is for game over texts
-		// 4 and 5 is for power up shield and shotgun
+		// 0 is for score
+		// 1 2 and 3 is for game over texts
 		// They need to pass in the values when rendering
 		if (i == 0)
 			snprintf(strBuffer, sizeof(strBuffer), "%s %d", textList[i].str, sScore);
-		else if (i == 1)
-			snprintf(strBuffer, sizeof(strBuffer), "%s %d", textList[i].str, sShipLives >= 0 ? sShipLives : 0);
 		else
 			snprintf(strBuffer, sizeof(strBuffer), "%s", textList[i].str);
 
@@ -713,17 +670,8 @@ void GameStateAsteroidsDraw(void)
 		sprintf_s(strBuffer, "Score: %d", sScore);
 		//AEGfxPrint(10, 10, (u32)-1, strBuffer);
 		printf("%s \n", strBuffer);
-
-		sprintf_s(strBuffer, "Ship Left: %d", sShipLives >= 0 ? sShipLives : 0);
 		//AEGfxPrint(600, 10, (u32)-1, strBuffer);
 		printf("%s \n", strBuffer);
-
-		// display the game over message
-		if (sShipLives <= 0)
-		{
-			//AEGfxPrint(280, 260, 0xFFFFFFFF, "       GAME OVER       ");
-			printf("       GAME OVER       \n");
-		}
 
 		// Set to false so that it doesn't flood the console with print messages
 		onValueChange = false;
@@ -865,57 +813,57 @@ void gameObjInstDestroy(GameObjInst * pInst)
 	[DO NOT UPDATE THIS PARAGRAPH'S CODE]
 */
 /******************************************************************************/
-void Helper_Wall_Collision()
-{
-	//calculate the vectors between the previous position of the ship and the boundary of wall
-	AEVec2 vec1;
-	vec1.x = spShip->posPrev.x - spWall->boundingBox.min.x;
-	vec1.y = spShip->posPrev.y - spWall->boundingBox.min.y;
-	AEVec2 vec2;
-	vec2.x = 0.0f;
-	vec2.y = -1.0f;
-	AEVec2 vec3;
-	vec3.x = spShip->posPrev.x - spWall->boundingBox.max.x;
-	vec3.y = spShip->posPrev.y - spWall->boundingBox.max.y;
-	AEVec2 vec4;
-	vec4.x = 1.0f;
-	vec4.y = 0.0f;
-	AEVec2 vec5;
-	vec5.x = spShip->posPrev.x - spWall->boundingBox.max.x;
-	vec5.y = spShip->posPrev.y - spWall->boundingBox.max.y;
-	AEVec2 vec6;
-	vec6.x = 0.0f;
-	vec6.y = 1.0f;
-	AEVec2 vec7;
-	vec7.x = spShip->posPrev.x - spWall->boundingBox.min.x;
-	vec7.y = spShip->posPrev.y - spWall->boundingBox.min.y;
-	AEVec2 vec8;
-	vec8.x = -1.0f;
-	vec8.y = 0.0f;
-	if (
-		(AEVec2DotProduct(&vec1, &vec2) >= 0.0f) && (AEVec2DotProduct(&spShip->velCurr, &vec2) <= 0.0f) ||
-		(AEVec2DotProduct(&vec3, &vec4) >= 0.0f) && (AEVec2DotProduct(&spShip->velCurr, &vec4) <= 0.0f) ||
-		(AEVec2DotProduct(&vec5, &vec6) >= 0.0f) && (AEVec2DotProduct(&spShip->velCurr, &vec6) <= 0.0f) ||
-		(AEVec2DotProduct(&vec7, &vec8) >= 0.0f) && (AEVec2DotProduct(&spShip->velCurr, &vec8) <= 0.0f)
-		)
-	{
-		float firstTimeOfCollision = 0.0f;
-		if (CollisionIntersection_RectRect(spShip->boundingBox,
-			spShip->velCurr,
-			spWall->boundingBox,
-			spWall->velCurr,
-			firstTimeOfCollision))
-		{
-			//re-calculating the new position based on the collision's intersection time
-			spShip->posCurr.x = spShip->velCurr.x * (float)firstTimeOfCollision + spShip->posPrev.x;
-			spShip->posCurr.y = spShip->velCurr.y * (float)firstTimeOfCollision + spShip->posPrev.y;
-
-			//reset ship velocity
-			spShip->velCurr.x = 0.0f;
-			spShip->velCurr.y = 0.0f;
-		}
-	}
-}
+//void Helper_Wall_Collision()
+//{
+//	//calculate the vectors between the previous position of the ship and the boundary of wall
+//	AEVec2 vec1;
+//	vec1.x = spShip->posPrev.x - spWall->boundingBox.min.x;
+//	vec1.y = spShip->posPrev.y - spWall->boundingBox.min.y;
+//	AEVec2 vec2;
+//	vec2.x = 0.0f;
+//	vec2.y = -1.0f;
+//	AEVec2 vec3;
+//	vec3.x = spShip->posPrev.x - spWall->boundingBox.max.x;
+//	vec3.y = spShip->posPrev.y - spWall->boundingBox.max.y;
+//	AEVec2 vec4;
+//	vec4.x = 1.0f;
+//	vec4.y = 0.0f;
+//	AEVec2 vec5;
+//	vec5.x = spShip->posPrev.x - spWall->boundingBox.max.x;
+//	vec5.y = spShip->posPrev.y - spWall->boundingBox.max.y;
+//	AEVec2 vec6;
+//	vec6.x = 0.0f;
+//	vec6.y = 1.0f;
+//	AEVec2 vec7;
+//	vec7.x = spShip->posPrev.x - spWall->boundingBox.min.x;
+//	vec7.y = spShip->posPrev.y - spWall->boundingBox.min.y;
+//	AEVec2 vec8;
+//	vec8.x = -1.0f;
+//	vec8.y = 0.0f;
+//	if (
+//		(AEVec2DotProduct(&vec1, &vec2) >= 0.0f) && (AEVec2DotProduct(&spShip->velCurr, &vec2) <= 0.0f) ||
+//		(AEVec2DotProduct(&vec3, &vec4) >= 0.0f) && (AEVec2DotProduct(&spShip->velCurr, &vec4) <= 0.0f) ||
+//		(AEVec2DotProduct(&vec5, &vec6) >= 0.0f) && (AEVec2DotProduct(&spShip->velCurr, &vec6) <= 0.0f) ||
+//		(AEVec2DotProduct(&vec7, &vec8) >= 0.0f) && (AEVec2DotProduct(&spShip->velCurr, &vec8) <= 0.0f)
+//		)
+//	{
+//		float firstTimeOfCollision = 0.0f;
+//		if (CollisionIntersection_RectRect(spShip->boundingBox,
+//			spShip->velCurr,
+//			spWall->boundingBox,
+//			spWall->velCurr,
+//			firstTimeOfCollision))
+//		{
+//			//re-calculating the new position based on the collision's intersection time
+//			spShip->posCurr.x = spShip->velCurr.x * (float)firstTimeOfCollision + spShip->posPrev.x;
+//			spShip->posCurr.y = spShip->velCurr.y * (float)firstTimeOfCollision + spShip->posPrev.y;
+//
+//			//reset ship velocity
+//			spShip->velCurr.x = 0.0f;
+//			spShip->velCurr.y = 0.0f;
+//		}
+//	}
+//}
 
 /// <summary>
 /// For updating active game object instances
@@ -954,7 +902,7 @@ void UpdateGO()
 
 			break;
 			// Power up and asteroid has the same movement so reuse, reduce, recycle
-		case TYPE_POWERUP:
+		//case TYPE_POWERUP:
 		case TYPE_ASTEROID:
 
 			// Wrap asteroids here
@@ -1003,34 +951,6 @@ void CheckGOCollision()
 				case TYPE_BULLET:
 					if (CollisionIntersection_RectRect(pInst_1->boundingBox, pInst_1->velCurr, pInst_2->boundingBox, pInst_2->velCurr, firstTimeOfCollision))
 					{
-						if (pInst_1->scale.x >= (ASTEROID_MIN_SCALE_X * 2.0f) && pInst_1->scale.y >= (ASTEROID_MIN_SCALE_Y * 2.0f))
-						{
-							// This part here is causing my ship to take damage when i destroy asteroids 
-							for (unsigned long k = 0; k < 3; ++k)
-							{
-								AEVec2 pos, vel, scale;
-								AEVec2Set(&pos, pInst_1->posCurr.x, pInst_1->posCurr.y);
-								float randAng = AERandFloat() * 360;
-
-								AEVec2 dir;
-								AEVec2Set(&dir, cosf(randAng), sinf(randAng));
-								AEVec2Normalize(&dir, &dir);
-								AEVec2Zero(&vel);
-
-								AEVec2Scale(&dir, &dir, ASTEROID_ACCEL);
-								AEVec2Add(&vel, &vel, &dir);
-
-								// Create more asteroids randomised from the size of the asteroid destroyed to min size of an asteroid
-								float randScaleX = AERandFloat() * (pInst_1->scale.x - ASTEROID_MIN_SCALE_X) + ASTEROID_MIN_SCALE_X;
-								float randScaleY = AERandFloat() * (pInst_1->scale.y - ASTEROID_MIN_SCALE_Y) + ASTEROID_MIN_SCALE_Y;
-
-								AEVec2Set(&scale, randScaleX, randScaleY);
-								CreateAsteroid(pos, vel, scale);
-							}
-
-							//  Update the hitboxes because new asteroids were made
-							UpdateGOCollisionBoxes();
-						}
 
 						// Destroy both the bullet and asteroid after
 						gameObjInstDestroy(pInst_1);
@@ -1051,66 +971,13 @@ void CheckGOCollision()
 					// If its colliding with the ship
 					if (CollisionIntersection_RectRect(pInst_1->boundingBox, pInst_1->velCurr, pInst_2->boundingBox, pInst_2->velCurr, firstTimeOfCollision))
 					{
-						// Use up the shield power first
-						if (shipShield == 1)
-						{
-							// Dont reduce health
-							shipShield = 0;
-							ResetShip();
-							break;
-						}
 
 						// Destroy the asteroid and update the ship live
 						gameObjInstDestroy(pInst_1);
-						if (!gameOver)
-						{
-							sShipLives--;
-							onValueChange = true;
-							if (sShipLives <= 0)
-								gameOver = true;
-						}
 
 						ResetShip();
 					}
 					break;
-				}
-			}
-		}
-		if (pInst_1->pObject->type == TYPE_POWERUP)
-		{
-			for (unsigned long j = 0; j < GAME_OBJ_INST_NUM_MAX; j++)
-			{
-				GameObjInst* pInst_2 = sGameObjInstList + j;
-				// Power up ignores other power up, asteroids and bullets
-				// Only collideable with the ship
-				if ((pInst_2->flag & FLAG_ACTIVE) == 0) continue;
-				if ((pInst_2->pObject->type == TYPE_POWERUP)) continue;
-				if ((pInst_2->pObject->type == TYPE_ASTEROID)) continue;
-				if ((pInst_2->pObject->type == TYPE_BULLET)) continue;
-				float firstTimeOfCollision = 0;
-
-				if (pInst_2->pObject->type == TYPE_SHIP)
-				{
-					if (CollisionIntersection_RectRect(pInst_1->boundingBox, pInst_1->velCurr, pInst_2->boundingBox, pInst_2->velCurr, firstTimeOfCollision))
-					{
-						// Randomise which power up to get when picked up
-						int randNum = rand() % (POWERUP_TYPE_NUM);
-						// For power up collision
-						switch (randNum)
-						{
-						case POWERUP_TYPE_SHIELD:
-							shipShield = 1;
-							shieldTimer = POWERUP_TIME;
-							break;
-						case POWERUP_TYPE_SHOTGUN:
-							shipShotgun = 1;
-							shotgunTimer = POWERUP_TIME;
-							break;
-						}
-
-						// Destroy power up aft touching
-						gameObjInstDestroy(pInst_1);
-					}
 				}
 			}
 		}
@@ -1173,7 +1040,7 @@ void NewAsteroidWave()
 	RandomiseAsteroid(AEGfxGetWinMaxX(), AEGfxGetWinMaxX(), AEGfxGetWinMinY(), AEGfxGetWinMaxY());
 
 	// Create a power up when a wave spawns
-	CreateRandPowerup();
+	//CreateRandPowerup();
 }
 
 /// <summary>
@@ -1207,50 +1074,6 @@ void RandomiseAsteroid(f32 min_xPos, f32 max_xPos, f32 min_yPos, f32 max_yPos)
 }
 
 /// <summary>
-/// Create a random powerup in either top, bottom, left or right side of the screen
-/// </summary>
-void CreateRandPowerup()
-{
-	AEVec2 pos, vel, scale;
-	int randNum = rand() % 4;
-	switch (randNum)
-	{
-	case 0:
-		// Bottom of the screen
-		pos.x = AERandFloat() * (AEGfxGetWinMaxX() - AEGfxGetWinMinX()) + AEGfxGetWinMinX();
-		pos.y = AERandFloat() * (AEGfxGetWinMinY() - AEGfxGetWinMinY()) + AEGfxGetWinMinY();
-		break;
-	case 1:
-		// Top of the screen
-		pos.x = AERandFloat() * (AEGfxGetWinMaxX() - AEGfxGetWinMinX()) + AEGfxGetWinMinX();
-		pos.y = AERandFloat() * (AEGfxGetWinMaxY() - AEGfxGetWinMaxY()) + AEGfxGetWinMaxY();
-		break;
-	case 2:
-		// Left side of the screen
-		pos.x = AERandFloat() * (AEGfxGetWinMinX() - AEGfxGetWinMinX()) + AEGfxGetWinMinX();
-		pos.y = AERandFloat() * (AEGfxGetWinMaxY() - AEGfxGetWinMinY()) + AEGfxGetWinMinY();
-		break;
-	case 3:
-		// Right side of the screen
-		pos.x = AERandFloat() * (AEGfxGetWinMaxX() - AEGfxGetWinMaxX()) + AEGfxGetWinMaxX();
-		pos.y = AERandFloat() * (AEGfxGetWinMaxY() - AEGfxGetWinMinY()) + AEGfxGetWinMinY();
-		break;
-	}
-	float randAng = AERandFloat() * 360;
-
-	AEVec2 dir;
-	AEVec2Set(&dir, cosf(randAng), sinf(randAng));
-	AEVec2Normalize(&dir, &dir);
-	AEVec2Zero(&vel);
-
-	AEVec2Scale(&dir, &dir, POWERUP_ACCEL);
-	AEVec2Add(&vel, &vel, &dir);
-	AEVec2Set(&scale, POWERUP_SCALE, POWERUP_SCALE);
-
-	gameObjInstCreate(TYPE_POWERUP, &scale, &pos, &vel, randAng);
-}
-
-/// <summary>
 /// Reset the ship when it gets hit by an asteroid
 /// </summary>
 void ResetShip()
@@ -1258,34 +1081,6 @@ void ResetShip()
 	AEVec2Set(&spShip->posCurr, 0, 0);
 	AEVec2Zero(&spShip->velCurr);
 	spShip->dirCurr = 0.0f;
-}
-
-/// <summary>
-/// Update the power up timers so they can turn off after a set amount of time
-/// </summary>
-void UpdatePowerups()
-{
-	f64 dt = AEFrameRateControllerGetFrameTime();
-
-	if (shipShield == 1) // If active
-	{
-		//printf("%f\n", shieldTimer);
-		shieldTimer -= dt;
-		if (shieldTimer <= 0)
-		{
-			// Its over
-			shipShield = 0;
-		}
-	}
-
-	if (shipShotgun == 1)
-	{
-		shotgunTimer -= dt;
-		if (shotgunTimer <= 0)
-		{
-			shipShotgun = 0;
-		}
-	}
 }
 
 /// <summary>
