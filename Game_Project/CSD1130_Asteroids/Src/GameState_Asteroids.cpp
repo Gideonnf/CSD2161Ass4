@@ -15,7 +15,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 /******************************************************************************/
 
 #include "main.h"
-//#include "ProcessReceive.h"
+#include "ProcessReceive.h"
 /******************************************************************************/
 /*!
 	Define constant variables that we use in our game
@@ -670,19 +670,10 @@ void GameStateAsteroidsUnload(void)
 
 void GameStateAsteroidsProcessMessage(std::string msg)
 {
-	// do any message processing here
-	// get which type of msg or smth maybe
-	if (msg.empty()) return;
+	// so that i dont have to work on the same file
+	// ill handle all message processing in ProcessReceive.h
+	ProcessMessages(msg, gameData);  
 
-	char msgID = msg[0];
-
-	switch (msgID)
-	{
-		// switch cases
-	case 0: // temporary
-		ProcessNewAsteroid(msg, gameData);
-		break;
-	}
 
 }
 
@@ -981,3 +972,4 @@ void RenderMeshObj(GameObjInst* GO)
 	AEGfxMeshDraw(GO->pObject->pMesh, AE_GFX_MDM_TRIANGLES);
 
 }
+

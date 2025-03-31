@@ -14,8 +14,9 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #ifndef ENTITY_H
 #define ENTITY_H
 
-#include "Main.h"
-
+#include "AEEngine.h"
+#include "AEMath.h"
+#include "Collision.h"
 
 struct BGObject
 {

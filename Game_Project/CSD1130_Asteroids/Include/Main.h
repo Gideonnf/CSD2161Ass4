@@ -24,6 +24,7 @@ extern double	g_appTime;
 
 // ---------------------------------------------------------------------------
 // includes
+
 #include <time.h>
 #include <cstdlib>
 #include <cstdio>
@@ -31,7 +32,6 @@ extern double	g_appTime;
 #include "Math.h"
 #include "Collision.h"
 #include "Entity.h"
-#include "ProcessReceive.h"
 #include "utils.h"
 #include "GameStateMgr.h"
 #include "GameState_Asteroids.h"

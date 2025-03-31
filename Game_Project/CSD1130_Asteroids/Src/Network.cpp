@@ -148,7 +148,7 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 		{
 			// send it?? process it?? idk
 			//Read command ID and then construct the message 
-			if()
+			//if()
 		}
 
 		Sleep(SLEEP_TIME);

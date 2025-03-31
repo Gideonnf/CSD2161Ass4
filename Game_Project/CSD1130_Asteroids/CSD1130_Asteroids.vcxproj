@@ -178,6 +178,7 @@
     <ClInclude Include="Include\GameState_Menu.h" />
     <ClInclude Include="Include\Main.h" />
     <ClInclude Include="Include\Network.h" />
+    <ClInclude Include="Include\Packet.h" />
     <ClInclude Include="Include\utils.h" />
   </ItemGroup>
   <ItemGroup>

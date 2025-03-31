@@ -2,10 +2,11 @@
 #define PROCESS_RECEIVE_H
 #include <string>
 #include "Entity.h"
-void ProcessNewAsteroid(std::string outMsg, GameData& data)
-{
-	// idk why i cant do a .cpp and define there without include errors
-}
+
+
+void ProcessMessages(std::string msg, GameData& data);
+
+
 
 
 #endif

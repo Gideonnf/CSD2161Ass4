@@ -1,5 +1,0 @@
-Menu Screen
-Fading Transition Effect
-Text on screen
-Power ups through crates - Shield and Shotgun
-Textures for ship, asteroids and background image
