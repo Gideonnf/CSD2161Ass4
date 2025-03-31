@@ -19,6 +19,9 @@
 #define SLEEP_TIME 500
 
 
+uint32_t seqNum = 0;
+
+
 int NetworkClient::Init()
 {
 	// read from text file
@@ -148,7 +151,39 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 		{
 			// send it?? process it?? idk
 			//Read command ID and then construct the message 
-			//if()
+			char buffer[MAX_STR_LEN];
+
+			unsigned int headerOffset = 0;
+
+			uint8_t commandID = static_cast<uint8_t>(outMsg[0]);
+			memcpy(&buffer[0], &commandID, sizeof(commandID));
+			headerOffset += 1;
+
+			std::string messageStr = outMsg.substr(1);
+			
+			uint32_t fileLength = static_cast<uint32_t>(messageStr.size());
+			memcpy(buffer + headerOffset, &fileLength, sizeof(fileLength));
+
+			headerOffset += 4;
+
+
+			memcpy(buffer + headerOffset, messageStr.c_str(), fileLength);
+			headerOffset += fileLength;
+
+
+			sockaddr_in udpServerAddress = {};
+			udpServerAddress.sin_family = AF_INET;
+			udpServerAddress.sin_port = htons(9999);
+			inet_pton(AF_INET, "192.168.1.13", &udpServerAddress.sin_addr);
+
+			int sentBytes = sendto(clientSocket, buffer, headerOffset, 0,
+				reinterpret_cast<sockaddr*>(&udpServerAddress), sizeof(udpServerAddress));
+
+			if (sentBytes == SOCKET_ERROR)
+			{
+				std::cerr << "Failed to send message!" << std::endl;
+			}
+
 		}
 
 		Sleep(SLEEP_TIME);
