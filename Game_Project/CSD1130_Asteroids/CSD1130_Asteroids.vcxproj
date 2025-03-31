@@ -178,9 +178,11 @@
     <ClInclude Include="Include\GameState_Menu.h" />
     <ClInclude Include="Include\Main.h" />
     <ClInclude Include="Include\Network.h" />
+    <ClInclude Include="Include\Packet.h" />
     <ClInclude Include="Include\utils.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Include\ProcessReceive.h" />
     <ClCompile Include="Src\Collision.cpp" />
     <ClCompile Include="Src\Entity.cpp" />
     <ClCompile Include="Src\GameStateMgr.cpp" />
@@ -188,6 +190,7 @@
     <ClCompile Include="Src\GameState_Menu.cpp" />
     <ClCompile Include="Src\Main.cpp" />
     <ClCompile Include="Src\Network.cpp" />
+    <ClCompile Include="Src\ProcessReceive.cpp" />
     <ClCompile Include="Src\utils.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

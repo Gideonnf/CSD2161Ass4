@@ -47,7 +47,7 @@ void GameStateAsteroidsUnload(void);
 /*!*************************************************************************
 \brief For receiving messages
 ***************************************************************************/
-void GameStateAsteroidsProcessMessage(std::string msg);
+void GameStateAsteroidsProcessMessage();
 
 // ---------------------------------------------------------------------------
 
@@ -94,6 +94,10 @@ void NewAsteroidWave();
 \brief Resets the ship when its hit
 ***************************************************************************/
 void  ResetShip();
+
+
+
+
 #endif // CSD1130_GAME_STATE_PLAY_H_
 
 

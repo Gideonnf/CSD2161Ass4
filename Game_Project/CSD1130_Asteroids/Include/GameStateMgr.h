@@ -41,7 +41,7 @@ extern void (*GameStateUpdate)();
 extern void (*GameStateDraw)();
 extern void (*GameStateFree)();
 extern void (*GameStateUnload)();
-extern void (*GameStateProcessMessage)(std::string msg);
+extern void (*GameStateProcessMessage)();
 
 // ---------------------------------------------------------------------------
 // Function prototypes

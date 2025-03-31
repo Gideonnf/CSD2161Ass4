@@ -148,12 +148,7 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 		{
 			// send it?? process it?? idk
 			//Read command ID and then construct the message 
-			uint8_t commandID = static_cast<uint8_t>(outMsg[0]);
-			if (commandID == CMDID::PLAYER_JOIN)
-			{
-
-			}
-			
+			//if()
 		}
 
 		Sleep(SLEEP_TIME);
@@ -204,4 +199,12 @@ std::string NetworkClient::GetIncomingMessage()
 
 	// will return empty string if nth in incoming message
 	return outMsg;
+}
+
+void NetworkClient::CreateMessage(std::string msg)
+{
+	{
+		std::lock_guard<std::mutex> lock(outMutex);
+		outgoingMessages.push(msg);
+	}
 }

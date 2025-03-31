@@ -31,7 +31,7 @@ void (*GameStateUpdate)()	= 0;
 void (*GameStateDraw)()		= 0;
 void (*GameStateFree)()		= 0;
 void (*GameStateUnload)()	= 0;
-void (*GameStateProcessMessage)(std::string msg) = 0;
+void (*GameStateProcessMessage)() = 0;
 
 /******************************************************************************/
 /*!

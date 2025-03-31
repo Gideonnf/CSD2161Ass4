@@ -24,6 +24,7 @@ extern double	g_appTime;
 
 // ---------------------------------------------------------------------------
 // includes
+
 #include <time.h>
 #include <cstdlib>
 #include <cstdio>

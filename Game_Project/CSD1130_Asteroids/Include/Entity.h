@@ -11,10 +11,12 @@ Reproduction or disclosure of this file or its contents without the
 prior written consent of DigiPen Institute of Technology is prohibited.
  */
  /******************************************************************************/
+#ifndef ENTITY_H
+#define ENTITY_H
 
-
-#include "Main.h"
-
+#include "AEEngine.h"
+#include "AEMath.h"
+#include "Collision.h"
 
 struct BGObject
 {
@@ -55,6 +57,83 @@ struct FadeObject
 	f64 fadeTimer;
 	bool goActive;
 };
+
+/*!
+
+	Data for game
+
+*/
+const unsigned int	GAME_OBJ_NUM_MAX = 32;			// The total number of different objects (Shapes)
+const unsigned int	GAME_OBJ_INST_NUM_MAX = 2048;			// The total number of different game object instances
+/******************************************************************************/
+/*!
+	Struct/Class Definitions
+*/
+/******************************************************************************/
+
+//Game object structure
+struct GameObj
+{
+	unsigned long		type;		// object type
+	AEGfxVertexList* pMesh;		// This will hold the triangles which will form the shape of the object
+	AEGfxTexture* pTexture;     // Hold the textures
+};
+
+// ---------------------------------------------------------------------------
+
+//Game object instance structure
+struct GameObjInst
+{
+	GameObj* pObject;	// pointer to the 'original' shape
+	unsigned long		flag;		// bit flag or-ed together
+	AEVec2				scale;		// scaling value of the object instance
+	AEVec2				posCurr;	// object current position
+
+	AEVec2				posPrev;	// object previous position -> it's the position calculated in the previous loop
+
+	AEVec2				velCurr;	// object current velocity
+	float				dirCurr;	// object current direction
+	AABB				boundingBox;// object bouding box that encapsulates the object
+	AEMtx33				transform;	// object transformation matrix: Each frame, 
+	// calculate the object instance's transformation matrix and save it here
+};
+
+
+struct GameData
+{
+	/******************************************************************************/
+/*!
+	Static Variables
+*/
+/******************************************************************************/
+
+// list of original object
+	GameObj				sGameObjList[GAME_OBJ_NUM_MAX];				// Each element in this array represents a unique game object (shape)
+	unsigned long		sGameObjNum;								// The number of defined game objects
+
+	// list of object instances
+	GameObjInst			sGameObjInstList[GAME_OBJ_INST_NUM_MAX];	// Each element in this array represents a unique game object instance (sprite)
+	unsigned long		sGameObjInstNum;							// The number of used game object instances
+
+	// pointer to the ship object
+	GameObjInst* spShip;										// Pointer to the "Ship" game object instance
+
+	// pointer to the wall object
+	//static GameObjInst *		spWall;										// Pointer to the "Wall" game object instance
+
+	// the score = number of asteroid destroyed
+	unsigned long		sScore;										// Current score
+
+	bool onValueChange = true;
+
+	TextObj scoreText;
+	TextObj endText;
+	TextObj endText2;
+
+	TextObj textList[4];
+
+};
+
 
 /*!*************************************************************************
 \brief Renders the fade object which is only used for the fading effect
@@ -103,3 +182,5 @@ void RenderText(TextObj* GO, s8 fontSize, char* str);
 	
 ***************************************************************************/
 void RenderText(ButtonObj button, s8 fontSize);
+
+#endif
