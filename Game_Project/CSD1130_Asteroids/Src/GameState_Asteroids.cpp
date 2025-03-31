@@ -311,6 +311,8 @@ void GameStateAsteroidsInit(void)
 /******************************************************************************/
 void GameStateAsteroidsUpdate(void)
 {
+	int playerInput = 0;
+
 	// =========================================================
 	// update according to input
 	// =========================================================
@@ -327,16 +329,7 @@ void GameStateAsteroidsUpdate(void)
 
 		gameData.spShip->pObject->pTexture = shipFireTexture;
 
-		// EXAMPLE OF USING PACKET
-		// ngl idk if all this will work yet until yy is done with sending and crystal is done with receiving in server
-		Packet newPacket(SHIP_MOVE);
-
-		newPacket << gameData.spShip->velCurr.x;
-		newPacket << gameData.spShip->velCurr.y;
-
-		{
-			NetworkClient::Instance().CreateMessage(newPacket.ToString());
-		}
+		playerInput = 1;
 	}
 
 	if (AEInputCheckCurr(AEVK_DOWN))
@@ -349,6 +342,8 @@ void GameStateAsteroidsUpdate(void)
 		AEVec2Scale(&dir, &dir, -SHIP_ACCEL_BACKWARD * (float)(AEFrameRateControllerGetFrameTime()) * 0.99f);
 		AEVec2Add(&gameData.spShip->velCurr, &gameData.spShip->velCurr, &dir);
 		gameData.spShip->pObject->pTexture = shipFireTexture;
+
+		playerInput = 2;
 	}
 
 	if (AEInputCheckCurr(AEVK_LEFT))
@@ -356,6 +351,8 @@ void GameStateAsteroidsUpdate(void)
 		// Rotate the ship, wrap the angle
 		gameData.spShip->dirCurr += SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
 		gameData.spShip->dirCurr =  AEWrap(gameData.spShip->dirCurr, -PI, PI);
+
+		playerInput = 3;
 	}
 
 	if (AEInputCheckCurr(AEVK_RIGHT))
@@ -363,6 +360,8 @@ void GameStateAsteroidsUpdate(void)
 		// Rotate the ship, wrap the angle
 		gameData.spShip->dirCurr -= SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
 		gameData.spShip->dirCurr =  AEWrap(gameData.spShip->dirCurr, -PI, PI);
+
+		playerInput = 4;
 	}
 
 	if (gameOver)
@@ -490,17 +489,20 @@ void GameStateAsteroidsUpdate(void)
 
 	// Update the GOs (i.e movement, etc)
 	UpdateGO();
-		
-
+	
+	if (playerInput != 0)
 	{
+		//Packet p(CMDID::SHIP_MOVE);
+
 		std::stringstream ss;
 		time_t timestamp;
 		time(&timestamp);
 		ss << CMDID::SHIP_MOVE << "Time:" << timestamp << ' ' <<
+			"Input:" << playerInput << ' ' <<
 			"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
 			"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
 			"Dir:" << gameData.spShip->dirCurr;
-			NetworkClient::Instance().CreateMessage(ss.str());
+		NetworkClient::Instance().CreateMessage(ss.str());
 	}
 
 	// =====================================================================
@@ -1031,3 +1033,31 @@ void RenderMeshObj(GameObjInst* GO)
 //}
 
 
+void ProcessPacketMessages(std::string msg, GameData& data)
+{
+	if (msg.empty()) return;
+
+	Packet newPacket(msg);
+
+	//	char msgID = msg[0];
+
+
+	switch (newPacket.id)
+	{
+		// switch cases
+	case ASTEROID_CREATED: // temporary
+		ProcessNewAsteroid(newPacket, data);
+		break;
+	}
+}
+
+void ProcessNewAsteroid(Packet& packet, GameData& data)
+{
+	float xPos;
+	packet >> xPos;
+
+
+
+
+
+}
