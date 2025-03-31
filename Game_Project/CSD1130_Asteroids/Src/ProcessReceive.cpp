@@ -1,19 +1,25 @@
 #include "ProcessReceive.h"
 
 
-void ProcessMessages(std::string msg, GameData& data)
+void ProcessPacketMessages(std::string msg, GameData& data)
 {
 	if (msg.empty()) return;
 
-	//Packet newPacket(msg); data
+	Packet newPacket(msg);
 
-	char msgID = msg[0];
+	//	char msgID = msg[0];
 
-	switch (msgID)
+
+	switch (newPacket.id)
 	{
 		// switch cases
-	case 0: // temporary
-		//ProcessNewAsteroid(msg, data);
+	case ASTEROID_CREATED: // temporary
+		ProcessNewAsteroid(newPacket, data);
 		break;
 	}
+}
+
+void ProcessNewAsteroid(Packet& packet, GameData& data)
+{
+
 }

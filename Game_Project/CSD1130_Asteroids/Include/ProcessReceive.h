@@ -2,9 +2,11 @@
 #define PROCESS_RECEIVE_H
 #include <string>
 #include "Entity.h"
+#include "Packet.h"
 
 
-void ProcessMessages(std::string msg, GameData& data);
+void ProcessPacketMessages(std::string msg, GameData& data);
+void ProcessNewAsteroid(Packet& packet, GameData& data);
 
 
 

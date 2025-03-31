@@ -672,7 +672,7 @@ void GameStateAsteroidsProcessMessage(std::string msg)
 {
 	// so that i dont have to work on the same file
 	// ill handle all message processing in ProcessReceive.h
-	ProcessMessages(msg, gameData);  
+	ProcessPacketMessages(msg, gameData);
 
 
 }
@@ -973,3 +973,26 @@ void RenderMeshObj(GameObjInst* GO)
 
 }
 
+//
+//void ProcessPacketMessages(std::string msg, GameData& data)
+//{
+//	if (msg.empty()) return;
+//
+//	Packet newPacket(msg);
+//
+//	//	char msgID = msg[0];
+//
+//
+//	switch (newPacket.id)
+//	{
+//		// switch cases
+//	case ASTEROID_CREATED: // temporary
+//		ProcessNewAsteroid(newPacket, data);
+//		break;
+//	}
+//}
+//
+//void ProcessNewAsteroid(Packet& packet, GameData& data)
+//{
+//
+//}
