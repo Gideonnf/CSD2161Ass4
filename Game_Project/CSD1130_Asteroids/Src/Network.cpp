@@ -128,6 +128,7 @@ void NetworkClient::Shutdown()
 	}
 }
 
+//Reading and sending the message
 void NetworkClient::SendMessages(SOCKET clientSocket)
 {
 	while (connected)
@@ -146,12 +147,15 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 		if (!outMsg.empty())
 		{
 			// send it?? process it?? idk
+			//Read command ID and then construct the message 
+			if()
 		}
 
 		Sleep(SLEEP_TIME);
 	}
 }
-
+//Take out the header and parse the message before adding it into the queue
+//Queue msg should be the commandID and the message
 void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 {
 	sockaddr_in senderAddr;
