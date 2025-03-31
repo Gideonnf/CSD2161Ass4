@@ -56,6 +56,9 @@ private:
 	std::mutex inMutex;
 	std::mutex outMutex;
 
+	time_t gameStartTime;
+
+
 	// use mutex to share a queue between game loop and threads
 	/*
 	
