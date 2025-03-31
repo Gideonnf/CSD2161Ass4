@@ -44,10 +44,6 @@ struct MessageData
 	CMDID commandID;
 	int sessionID{};
 	int seqNum{};
-	int fileLength{};
-	int headerOffset{};
-	int dataLength{};
-	std::string data{};
 };
 
 class NetworkClient
@@ -93,4 +89,5 @@ private:
 	*/
 
 };
+
 #endif

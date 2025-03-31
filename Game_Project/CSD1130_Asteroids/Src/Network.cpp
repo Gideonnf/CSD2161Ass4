@@ -148,7 +148,12 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 		{
 			// send it?? process it?? idk
 			//Read command ID and then construct the message 
-			if()
+			uint8_t commandID = static_cast<uint8_t>(outMsg[0]);
+			if (commandID == CMDID::PLAYER_JOIN)
+			{
+
+			}
+			
 		}
 
 		Sleep(SLEEP_TIME);
