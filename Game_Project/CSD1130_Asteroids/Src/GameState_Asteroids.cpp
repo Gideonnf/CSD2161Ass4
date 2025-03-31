@@ -14,6 +14,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
  */
 /******************************************************************************/
 
+#include <Network.h>
 #include "main.h"
 #include "ProcessReceive.h"
 /******************************************************************************/
@@ -211,48 +212,6 @@ void GameStateAsteroidsLoad(void)
 	pObj->pTexture = asteroidTexture;
 	AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
 
-	// =========================
-	// create the wall shape
-	// =========================
-
-	/*pObj = sGameObjList + sGameObjNum++;
-	pObj->type = TYPE_WALL;
-
-	AEGfxMeshStart();
-	AEGfxTriAdd(
-		-0.5f, -0.5f, 0x6600FF00, 0.0f, 0.0f,
-		0.5f, 0.5f, 0x6600FF00, 0.0f, 0.0f,
-		-0.5f, 0.5f, 0x6600FF00, 0.0f, 0.0f);
-	AEGfxTriAdd(
-		-0.5f, -0.5f, 0x6600FF00, 0.0f, 0.0f,
-		0.5f, -0.5f, 0x6600FF00, 0.0f, 0.0f,
-		0.5f, 0.5f, 0x6600FF00, 0.0f, 0.0f);
-
-	pObj->pMesh = AEGfxMeshEnd();
-	AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");	*/
-
-	// =========================
-	// create power up shape
-	// =========================
-
-	//pObj = sGameObjList + sGameObjNum++;
-	//pObj->type = TYPE_POWERUP;
-
-	//AEGfxMeshStart();
-	//AEGfxTriAdd(
-	//	-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,  // bottom-left
-	//	0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,   // bottom-right
-	//	-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);  // top-left
-
-	//AEGfxTriAdd(
-	//	0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,   // bottom-right
-	//	0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,    // top-right
-	//	-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);  // top-left
-
-	//pObj->pMesh = AEGfxMeshEnd();
-	//pObj->pTexture = powerUpTexture;
-	//AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
-
 	// Create the Background object
 
 	AEGfxMeshStart();
@@ -274,6 +233,8 @@ void GameStateAsteroidsLoad(void)
 	fontSize = 36;
 	textFont = AEGfxCreateFont("../Resources/Fonts/Arial-Italic.ttf", fontSize);
 
+
+
 }
 
 /******************************************************************************/
@@ -283,6 +244,9 @@ void GameStateAsteroidsLoad(void)
 /******************************************************************************/
 void GameStateAsteroidsInit(void)
 {
+	// establish connection???
+	NetworkClient::Instance().Init();
+
 	//waveTimer = 0.0f;
 
 	AEVec2Set(&bgGO.goScale, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -361,6 +325,17 @@ void GameStateAsteroidsUpdate(void)
 		AEVec2Add(&gameData.spShip->velCurr, &gameData.spShip->velCurr, &dir);
 
 		gameData.spShip->pObject->pTexture = shipFireTexture;
+
+		// EXAMPLE OF USING PACKET
+		// ngl idk if all this will work yet until yy is done with sending and crystal is done with receiving in server
+		Packet newPacket(SHIP_MOVE);
+
+		newPacket << gameData.spShip->velCurr.x;
+		newPacket << gameData.spShip->velCurr.y;
+
+		{
+			NetworkClient::Instance().CreateMessage(newPacket.ToString());
+		}
 	}
 
 	if (AEInputCheckCurr(AEVK_DOWN))
@@ -668,8 +643,9 @@ void GameStateAsteroidsUnload(void)
 */
 /******************************************************************************/
 
-void GameStateAsteroidsProcessMessage(std::string msg)
+void GameStateAsteroidsProcessMessage()
 {
+	std::string msg = NetworkClient::Instance().GetIncomingMessage();
 	// so that i dont have to work on the same file
 	// ill handle all message processing in ProcessReceive.h
 	ProcessPacketMessages(msg, gameData);
@@ -996,3 +972,5 @@ void RenderMeshObj(GameObjInst* GO)
 //{
 //
 //}
+
+

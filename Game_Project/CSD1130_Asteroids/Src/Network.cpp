@@ -200,3 +200,11 @@ std::string NetworkClient::GetIncomingMessage()
 	// will return empty string if nth in incoming message
 	return outMsg;
 }
+
+void NetworkClient::CreateMessage(std::string msg)
+{
+	{
+		std::lock_guard<std::mutex> lock(outMutex);
+		outgoingMessages.push(msg);
+	}
+}

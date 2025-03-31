@@ -40,6 +40,7 @@ public:
 	void SendMessages(SOCKET clientSocket);
 	void ReceiveMessages(SOCKET udpSocket);
 	std::string GetIncomingMessage();
+	void CreateMessage(std::string msg);
 
 private:
 	SOCKET udpSocket;

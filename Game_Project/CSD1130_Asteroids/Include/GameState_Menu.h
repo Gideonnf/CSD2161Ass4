@@ -52,6 +52,6 @@ void GameStateMenuUnload();
 /*!*************************************************************************
 \brief Process any messages
 ***************************************************************************/
-void GameStateMenuProcessMessage(std::string msg);
+void GameStateMenuProcessMessage();
 
 #endif

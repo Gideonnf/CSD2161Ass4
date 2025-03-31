@@ -21,5 +21,11 @@ void ProcessPacketMessages(std::string msg, GameData& data)
 
 void ProcessNewAsteroid(Packet& packet, GameData& data)
 {
+	float xPos;
+	packet >> xPos;
+
+
+	
+
 
 }

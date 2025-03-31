@@ -12,7 +12,6 @@ Reproduction or disclosure of this file or its contents without the
 prior written consent of DigiPen Institute of Technology is prohibited.
  */
 /******************************************************************************/
-#include <Network.h>
 #include "main.h"
 #include <memory>
 
@@ -75,8 +74,6 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 	// Initialize the game state manager to menu st ate
 	GameStateMgrInit(GS_MENU);
 
-	// establish connection???
-	NetworkClient::Instance().Init();
 
 	while(gGameStateCurr != GS_QUIT)
 	{
@@ -100,7 +97,7 @@ int WINAPI WinMain(HINSTANCE instanceH, HINSTANCE prevInstanceH, LPSTR command_l
 			AESysFrameStart();
 
 			//std::lock_guard<std::mutex> lock();
-			GameStateProcessMessage(NetworkClient::Instance().GetIncomingMessage());
+			GameStateProcessMessage();
 
 			// Update the current game state
 			GameStateUpdate();

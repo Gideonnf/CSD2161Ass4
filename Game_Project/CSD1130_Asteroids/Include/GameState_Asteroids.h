@@ -47,7 +47,7 @@ void GameStateAsteroidsUnload(void);
 /*!*************************************************************************
 \brief For receiving messages
 ***************************************************************************/
-void GameStateAsteroidsProcessMessage(std::string msg);
+void GameStateAsteroidsProcessMessage();
 
 // ---------------------------------------------------------------------------
 
