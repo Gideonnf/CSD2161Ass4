@@ -136,7 +136,11 @@ void GameStateAsteroidsLoad(void)
 	gameData.sGameObjInstNum = 0;
 
 	// The ship object instance hasn't been created yet, so this "spShip" pointer is initialized to 0
-	gameData.spShip = nullptr;
+	for (int i = 0; i < 4; ++i)
+	{
+		gameData.spShip[i] = nullptr;
+
+	}
 
 	// Load the textures
 	asteroidTexture = AEGfxTextureLoad("../Resources/Textures/asteroid.png");
@@ -284,10 +288,17 @@ void GameStateAsteroidsInit(void)
 	AEVec2Set(&pos, 0, 0);
 	AEVec2Set(&vel, 0, 0);
 
-	gameData.spShip = gameObjInstCreate(TYPE_SHIP, &scale, &pos, &vel, 0.0f);
-	AE_ASSERT(gameData.spShip);
-	gameData.spShip->posPrev.x = gameData.spShip->posCurr.x;
-	gameData.spShip->posPrev.y = gameData.spShip->posCurr.y;
+	// instantiate all 4 first
+	// but we're only gonna be using the ones that are being used by clients
+	for (int i = 0; i < 4; ++i)
+	{
+		gameData.spShip[i] = gameObjInstCreate(TYPE_SHIP, &scale, &pos, &vel, 0.0f);
+		AE_ASSERT(gameData.spShip[i]);
+		gameData.spShip[i]->posPrev.x = gameData.spShip[i]->posCurr.x;
+		gameData.spShip[i]->posPrev.y = gameData.spShip[i]->posCurr.y;
+		gameData.spShip[i]->active = false;
+
+	}
 
 
 	// no creating anything new i think
@@ -316,18 +327,18 @@ void GameStateAsteroidsUpdate(void)
 	// =========================================================
 	// update according to input
 	// =========================================================
-	gameData.spShip->pObject->pTexture = shipTexture;
+	gameData.spShip[gameData.currID]->pObject->pTexture = shipTexture;
 	if (AEInputCheckCurr(AEVK_UP))
 	{
 		// Get the direction and calculate the velocity and apply it to the current velocity.
 		AEVec2 dir;
-		AEVec2Set(&dir, cosf(gameData.spShip->dirCurr), sinf(gameData.spShip->dirCurr));
+		AEVec2Set(&dir, cosf(gameData.spShip[gameData.currID]->dirCurr), sinf(gameData.spShip[gameData.currID]->dirCurr));
 		AEVec2Normalize(&dir, &dir);
 
 		AEVec2Scale(&dir, &dir, SHIP_ACCEL_FORWARD * (float)(AEFrameRateControllerGetFrameTime()) * 0.99f);
-		AEVec2Add(&gameData.spShip->velCurr, &gameData.spShip->velCurr, &dir);
+		AEVec2Add(&gameData.spShip[gameData.currID]->velCurr, &gameData.spShip[gameData.currID]->velCurr, &dir);
 
-		gameData.spShip->pObject->pTexture = shipFireTexture;
+		gameData.spShip[gameData.currID]->pObject->pTexture = shipFireTexture;
 
 		playerInput = 1;
 	}
@@ -337,11 +348,11 @@ void GameStateAsteroidsUpdate(void)
 		// Get the direction and calculate the velocity and apply it to the current velocity.
 		// Apply speed negatively since its going backward
 		AEVec2 dir;
-		AEVec2Set(&dir, cosf(gameData.spShip->dirCurr), sinf(gameData.spShip->dirCurr));
+		AEVec2Set(&dir, cosf(gameData.spShip[gameData.currID]->dirCurr), sinf(gameData.spShip[gameData.currID]->dirCurr));
 		AEVec2Normalize(&dir, &dir);
 		AEVec2Scale(&dir, &dir, -SHIP_ACCEL_BACKWARD * (float)(AEFrameRateControllerGetFrameTime()) * 0.99f);
-		AEVec2Add(&gameData.spShip->velCurr, &gameData.spShip->velCurr, &dir);
-		gameData.spShip->pObject->pTexture = shipFireTexture;
+		AEVec2Add(&gameData.spShip[gameData.currID]->velCurr, &gameData.spShip[gameData.currID]->velCurr, &dir);
+		gameData.spShip[gameData.currID]->pObject->pTexture = shipFireTexture;
 
 		playerInput = 2;
 	}
@@ -349,8 +360,8 @@ void GameStateAsteroidsUpdate(void)
 	if (AEInputCheckCurr(AEVK_LEFT))
 	{
 		// Rotate the ship, wrap the angle
-		gameData.spShip->dirCurr += SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
-		gameData.spShip->dirCurr =  AEWrap(gameData.spShip->dirCurr, -PI, PI);
+		gameData.spShip[gameData.currID]->dirCurr += SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
+		gameData.spShip[gameData.currID]->dirCurr =  AEWrap(gameData.spShip[gameData.currID]->dirCurr, -PI, PI);
 
 		playerInput = 3;
 	}
@@ -358,8 +369,8 @@ void GameStateAsteroidsUpdate(void)
 	if (AEInputCheckCurr(AEVK_RIGHT))
 	{
 		// Rotate the ship, wrap the angle
-		gameData.spShip->dirCurr -= SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
-		gameData.spShip->dirCurr =  AEWrap(gameData.spShip->dirCurr, -PI, PI);
+		gameData.spShip[gameData.currID]->dirCurr -= SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
+		gameData.spShip[gameData.currID]->dirCurr =  AEWrap(gameData.spShip[gameData.currID]->dirCurr, -PI, PI);
 
 		playerInput = 4;
 	}
@@ -383,11 +394,11 @@ void GameStateAsteroidsUpdate(void)
 		AEVec2 pos, vel;
 		AEVec2 scale;
 		// Creates bullets based on the ship's direction and angle
-		pos.x = gameData.spShip->posCurr.x;	pos.y = gameData.spShip->posCurr.y;
-		vel.x = BULLET_SPEED * cosf(gameData.spShip->dirCurr);
-		vel.y = BULLET_SPEED * sinf(gameData.spShip->dirCurr);
+		pos.x = gameData.spShip[gameData.currID]->posCurr.x;	pos.y = gameData.spShip[gameData.currID]->posCurr.y;
+		vel.x = BULLET_SPEED * cosf(gameData.spShip[gameData.currID]->dirCurr);
+		vel.y = BULLET_SPEED * sinf(gameData.spShip[gameData.currID]->dirCurr);
 		AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-		GameObjInst* bulletObj = gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, gameData.spShip->dirCurr);
+		GameObjInst* bulletObj = gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
 		unsigned int bulletID{};
 
 		for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
@@ -408,7 +419,7 @@ void GameStateAsteroidsUpdate(void)
 				"ID:" << bulletID <<
 				"Pos:" << pos.x << ' ' << pos.y << ' ' <<
 				"Vel:" << vel.x << ' ' << vel.y << ' ' <<
-				"Dir:" << gameData.spShip->dirCurr;
+				"Dir:" << gameData.spShip[gameData.currID]->dirCurr;
 			NetworkClient::Instance().CreateMessage(ss.str());
 		}
 
@@ -494,15 +505,15 @@ void GameStateAsteroidsUpdate(void)
 	{
 		//Packet p(CMDID::SHIP_MOVE);
 
-		std::stringstream ss;
-		time_t timestamp;
-		time(&timestamp);
-		ss << CMDID::SHIP_MOVE << "Time:" << timestamp << ' ' <<
-			"Input:" << playerInput << ' ' <<
-			"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
-			"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
-			"Dir:" << gameData.spShip->dirCurr;
-		NetworkClient::Instance().CreateMessage(ss.str());
+		//std::stringstream ss;
+		//time_t timestamp;
+		//time(&timestamp);
+		//ss << CMDID::SHIP_MOVE << "Time:" << timestamp << ' ' <<
+		//	"Input:" << playerInput << ' ' <<
+		//	"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
+		//	"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
+		//	"Dir:" << gameData.spShip->dirCurr;
+		//NetworkClient::Instance().CreateMessage(ss.str());
 	}
 
 	// =====================================================================
@@ -550,6 +561,8 @@ void GameStateAsteroidsDraw(void)
 		// skip non-active object
 		if ((pInst->flag & FLAG_ACTIVE) == 0)
 			continue;
+
+		if (!pInst->active) continue; // dont render inactive objs
 		
 		// If its an gamobject that has a texture on it
 		if (pInst->pObject->pTexture != nullptr)
@@ -983,9 +996,9 @@ void CreateAsteroid(AEVec2 _pos, AEVec2 _vel, AEVec2 _scale)
 /// </summary>
 void ResetShip()
 {
-	AEVec2Set(&gameData.spShip->posCurr, 0, 0);
-	AEVec2Zero(&gameData.spShip->velCurr);
-	gameData.spShip->dirCurr = 0.0f;
+	AEVec2Set(&gameData.spShip[gameData.currID]->posCurr, 0, 0);
+	AEVec2Zero(&gameData.spShip[gameData.currID]->velCurr);
+	gameData.spShip[gameData.currID]->dirCurr = 0.0f;
 }
 
 /// <summary>
@@ -1022,10 +1035,13 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	{
 	case REPLY_PLAYER_JOIN:
 		msg >> clientID;
+		gameData.spShip[clientID]->active = true;
+		gameData.currID = clientID;
 
 		break;
 	case NEW_PLAYER_JOIN:
-		msg >> clientID;
+			msg >> clientID;
+			gameData.spShip[clientID]->active = true;
 
 		break;
 		// switch cases

@@ -356,7 +356,7 @@ int main()
 					// END OF GETTING CLIENT SOCKET
 					
 					// body of the message
-					std::memcpy(buffer + offset, msg.data.body + 1, msg.data.writePos);
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
 					offset += msg.data.writePos;
 					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
 					break;

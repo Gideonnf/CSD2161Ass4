@@ -84,6 +84,8 @@ struct GameObj
 //Game object instance structure
 struct GameObjInst
 {
+	bool active = false;
+
 	GameObj* pObject;	// pointer to the 'original' shape
 	unsigned long		flag;		// bit flag or-ed together
 	AEVec2				scale;		// scaling value of the object instance
@@ -116,7 +118,7 @@ struct GameData
 	unsigned long		sGameObjInstNum;							// The number of used game object instances
 
 	// pointer to the ship object
-	GameObjInst* spShip;										// Pointer to the "Ship" game object instance
+	GameObjInst* spShip[4];										// Pointer to the "Ship" game object instance
 
 	// pointer to the wall object
 	//static GameObjInst *		spWall;										// Pointer to the "Wall" game object instance
@@ -131,7 +133,8 @@ struct GameData
 	TextObj endText2;
 
 	TextObj textList[4];
-
+	
+	int currID{};
 };
 
 
