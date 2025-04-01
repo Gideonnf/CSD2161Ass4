@@ -24,6 +24,8 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
 #include "Windows.h"		// Entire Win32 API...
 #include "winsock2.h"		// ...or Winsock alone
 #include "ws2tcpip.h"		// getaddrinfo()
@@ -113,7 +115,7 @@ void HandleSubmitScore(char *buffer, SOCKET clientSocket)
 	// Send response to client
 	send(clientSocket, message, messageSize, 0);
 }
-
+void ProcessPlayerJoin(const sockaddr_in& clientAddr, const char* buffer, int recvLen);
 void HandleGetScores(SOCKET clientSocket)
 {
 	char message[MAX_STR_LEN];
@@ -156,7 +158,7 @@ void UDPReceiveHandler(SOCKET udpListenerSocket);
 static int userCount = 0;
 
 std::mutex lockMutex;
-std::queue<std::string> messageQueue;
+std::queue<MessageData> messageQueue;
 
 static ServerData serverData;
 
@@ -331,7 +333,7 @@ void UDPSendingHandler()
 		{
 			// set to the curr time it is resolving all messages
 			lastSendTime = currTime;
-			std::queue<std::string> messages;
+			std::queue<MessageData> messages;
 			{
 				std::lock_guard<std::mutex> lock(lockMutex);
 				// swap to the local queue of messages so I dont have to keep doing lock_guard shit
@@ -341,29 +343,72 @@ void UDPSendingHandler()
 			// loop through every message to send out
 			while (!messages.empty())
 			{
-				const std::string& msg = messages.front();
-				// loop through every client
-				for (int i = 0; i < MAX_CONNECTION; ++i)
+				char buffer[MAX_STR_LEN];
+				int offset = 0;
+				std::memset(buffer, 0, sizeof(buffer));
+
+				const MessageData& msg = messages.front();
+
+				switch (msg.commandID)
 				{
-					ClientInfo& client = serverData.totalClients[i];
-					if (!client.connected) continue; // skip unconnected client slots
-
-					sockaddr_in clientAddr;
-					memset(&clientAddr, 0, sizeof(clientAddr));
-					clientAddr.sin_family = AF_INET;
-					clientAddr.sin_port = htons(client.port);
-					
-					// convert IP string to binary format
-					if (inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr) <= 0)
+					case REPLY_PLAYER_JOIN:
 					{
-						// invalid IP
-						continue;
+						 // this only sends to 1 client
+
+						sockaddr_in otherAddr;
+						memset(&otherAddr, 0, sizeof(otherAddr));
+						otherAddr.sin_family = AF_INET;
+						// get the port of the target client
+						otherAddr.sin_port = htons(serverData.totalClients[msg.sessionID].port);
+						// get the ip of the target client
+						inet_pton(AF_INET, serverData.totalClients[msg.sessionID].ip.c_str(), &otherAddr.sin_addr);
+
+						
+						buffer[0] = REPLY_PLAYER_JOIN;
+						offset++;
+						std::memcpy(buffer + offset, msg.data.c_str(), sizeof(msg.data));
+						offset += sizeof(msg.data);
+						// send it TODO: i forgot if offset should be used here
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
+						break;
 					}
+				case NEW_PLAYER_JOIN:
 
-					// send it
-					sendto(udpListenerSocket, msg.c_str(), msg.size(), 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+					// create the message buffer ifrst
+					buffer[0] = NEW_PLAYER_JOIN;
+					offset++;
+					std::memcpy(buffer + offset, msg.data.c_str(), sizeof(msg.data));
+					offset += sizeof(msg.data);
+
+					// loop through every client to send this msg to them
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						// in this case, sessionID of message is used to represent who is joining
+						if (i == msg.sessionID) continue; // dont send to the new player joining
+
+						ClientInfo& client = serverData.totalClients[i];
+						if (!client.connected) continue; // skip unconnected client slots
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+
+						// convert IP string to binary format
+						if (inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr) <= 0)
+						{
+							// invalid IP
+							continue;
+						}
+
+						// send it
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				case SHIP_MOVE:
+					break;
+
 				}
-
 				// pop the message im using
 				messages.pop();
 			}
@@ -412,13 +457,74 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 		{
 			char msgID = buffer[0];
 
+			// i only do this one for now
 			switch (msgID)
 			{
-
+			case PLAYER_JOIN:
+				ProcessPlayerJoin(recvAddr, buffer, recvLen);
+				break;
+			case SHIP_MOVE:
+				break;
 			}
 		}
+	}
+}
 
-
+void ProcessPlayerJoin( const sockaddr_in& clientAddr, const char* buffer,  int recvLen)
+{
+	int availID = -1;
+	for (int i = 0; i < MAX_CONNECTION; ++i)
+	{
+		if (!serverData.totalClients[i].connected)
+		{
+			// this client is not connected
+			availID = i;
+			break;
+		}
 	}
 
+	if (availID == -1)
+	{
+		// send a rej packet but i lazy do that now
+		return;
+	}
+
+	ClientInfo& newClient = serverData.totalClients[availID];
+
+	newClient.sessionID = availID;
+	newClient.ip = inet_ntoa(clientAddr.sin_addr);
+	newClient.port = ntohs(clientAddr.sin_port);
+	newClient.connected = true;
+
+	// default initialize ship data
+	// send back to the connecting player the reply
+	Packet replyPacket(REPLY_PLAYER_JOIN);
+	replyPacket << availID; // pack the ship's ID in 
+	// NOTE: This isn't the right way to send the msg to client
+	// we still need to do proper header management (i.e checksum/seq number/all that jazz shit things)
+	std::string message = replyPacket.ToString(); 
+	// send to the client
+	{
+		MessageData newMessage;
+		newMessage.commandID = replyPacket.id;
+		newMessage.sessionID = newClient.sessionID;
+		newMessage.data = message;
+
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(newMessage);
+	}
+
+	Packet newPlayerPacket(NEW_PLAYER_JOIN);
+	newPlayerPacket << newClient.sessionID; // i think i should be packing the ID of the new client??
+	message = newPlayerPacket.ToString();
+
+	{
+		MessageData newMessage;
+		newMessage.commandID = newPlayerPacket.id;
+		newMessage.sessionID = newClient.sessionID;// sending to the current client's id which is i 
+		newMessage.data = message;
+
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(newMessage);
+	}
 }
