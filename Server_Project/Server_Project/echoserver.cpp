@@ -40,6 +40,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <string>			     // string
 
 #include "taskqueue.h"
+#include "highscores.h"
 
 //#define WINSOCK_VERSION     2
 #define WINSOCK_SUBVERSION  2
@@ -62,7 +63,89 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define MAX_RETRIES 5
 #define PACKET_LOSS_RATE 0.02
 #define SIMULATE_PACKET_LOSS false
+#define REQ_SUBMIT_SCORE ((unsigned char)0x6)
+#define RSP_SUBMIT_SCORE ((unsigned char)0x7)
+#define REQ_GET_SCORES ((unsigned char)0x8)
+#define RSP_GET_SCORES ((unsigned char)0x9)
 
+// Add these new handler functions:
+
+void HandleSubmitScore(char *buffer, SOCKET clientSocket)
+{
+	int offset = 1;  // Skip command ID
+
+	// Get player name length
+	uint32_t nameLength;
+	memcpy(&nameLength, &buffer[offset], 4);
+	nameLength = ntohl(nameLength);
+	offset += 4;
+
+	// Extract the player name
+	std::string playerName(buffer + offset, nameLength);
+	offset += nameLength;
+
+	// Get the score
+	uint32_t score;
+	memcpy(&score, &buffer[offset], 4);
+	score = ntohl(score);
+
+	std::cout << "Received score from " << playerName << ": " << score << std::endl;
+
+	// Update high scores
+	bool addedToHighScores = UpdateHighScores(playerName, score);
+
+	// Send response
+	char message[MAX_STR_LEN];
+	unsigned int messageSize = 0;
+
+	message[0] = RSP_SUBMIT_SCORE;
+	messageSize += 1;
+
+	// Add success flag
+	uint8_t success = addedToHighScores ? 1 : 0;
+	memcpy(&message[messageSize], &success, 1);
+	messageSize += 1;
+
+	// Send response to client
+	send(clientSocket, message, messageSize, 0);
+}
+
+void HandleGetScores(SOCKET clientSocket)
+{
+	char message[MAX_STR_LEN];
+	unsigned int messageSize = 0;
+
+	message[0] = RSP_GET_SCORES;
+	messageSize += 1;
+
+	// Get number of scores
+	uint16_t numScores = static_cast<uint16_t>(topScores.size());
+	uint16_t numScoresNetworkOrder = htons(numScores);
+	memcpy(&message[messageSize], &numScoresNetworkOrder, sizeof(numScoresNetworkOrder));
+	messageSize += sizeof(numScoresNetworkOrder);
+
+	// Pack each score into the message
+	for (const auto &score : topScores)
+	{
+		// Add player name length
+		uint32_t nameLength = static_cast<uint32_t>(score.playerName.length());
+		uint32_t nameLengthNetworkOrder = htonl(nameLength);
+		memcpy(&message[messageSize], &nameLengthNetworkOrder, sizeof(nameLengthNetworkOrder));
+		messageSize += sizeof(nameLengthNetworkOrder);
+
+		// Add player name
+		memcpy(&message[messageSize], score.playerName.c_str(), nameLength);
+		messageSize += nameLength;
+
+		// Add score
+		uint32_t scoreNetworkOrder = htonl(score.score);
+		memcpy(&message[messageSize], &scoreNetworkOrder, sizeof(scoreNetworkOrder));
+		messageSize += sizeof(scoreNetworkOrder);
+	}
+
+	// Send high scores to client
+	send(clientSocket, message, messageSize, 0);
+}
 void disconnect(SOCKET& listenerSocket);
 bool execute(SOCKET clientSocket);
 //void HandleEchoMessage(SOCKET clientSocket, char* buffer, int length);
@@ -463,6 +546,12 @@ bool execute(SOCKET clientSocket)
 			HandleListFiles(clientSocket);
 			break;
 		case RSP_LISTFILES:
+			break;
+		case REQ_SUBMIT_SCORE:
+			HandleSubmitScore(buffer, clientSocket);
+			break;
+		case REQ_GET_SCORES:
+			HandleGetScores(clientSocket);
 			break;
 		default:
 		{
