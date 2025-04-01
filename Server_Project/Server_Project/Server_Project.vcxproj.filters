@@ -26,5 +26,8 @@
     <ClInclude Include="taskqueue.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="highscores.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
