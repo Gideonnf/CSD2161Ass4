@@ -24,10 +24,29 @@ uint32_t seqNum = 0;
 
 int NetworkClient::Init()
 {
+	std::ifstream serverConfigFile("serverConfig.txt");
+
+	if (!serverConfigFile.is_open())
+	{
+		std::cerr << "File not found!" << std::endl;
+	}
+
+	std::string fileText;
+
 	// read from text file
-	std::string host = "192.168.1.13"; // Server IP
-	std::string udpPortString = "9999"; // Server Port
-	std::string clientUDPPortString = "8888";
+	std::string host; // Server IP
+	std::string udpPortString; // Server Port
+	std::string clientUDPPortString;
+
+	while (getline(serverConfigFile, fileText))
+	{
+		std::istringstream stream(fileText);
+
+		stream >> host >> udpPortString >> clientUDPPortString;
+	}
+
+	serverConfigFile.close();
+
 
 	// -------------------------------------------------------------------------
 	// Start up Winsock, asking for version 2.2.
