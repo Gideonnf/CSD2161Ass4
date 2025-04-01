@@ -331,6 +331,8 @@ int main()
 				buffer[0] = msgID;
 				offset++;
 
+				// Any other header stuff do here
+
 				// add the length of the message
 				uint32_t messageLength = static_cast<uint32_t>(msg.data.writePos); // writePos represents how much was written
 				messageLength = htonl(messageLength);
@@ -343,6 +345,7 @@ int main()
 				{
 					// this only sends to 1 client
 
+					// START OF GETTING CLIENT SOCKET
 					sockaddr_in otherAddr;
 					memset(&otherAddr, 0, sizeof(otherAddr));
 					otherAddr.sin_family = AF_INET;
@@ -350,10 +353,11 @@ int main()
 					otherAddr.sin_port = htons(serverData.totalClients[msg.sessionID].port);
 					// get the ip of the target client
 					inet_pton(AF_INET, serverData.totalClients[msg.sessionID].ip.c_str(), &otherAddr.sin_addr);
+					// END OF GETTING CLIENT SOCKET
+					
 					// body of the message
 					std::memcpy(buffer + offset, msg.data.body + 1, msg.data.writePos);
 					offset += msg.data.writePos;
-					// send it TODO: i forgot if offset should be used here
 					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
 					break;
 				}

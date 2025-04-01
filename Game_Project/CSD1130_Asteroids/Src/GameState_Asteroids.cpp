@@ -1010,7 +1010,7 @@ void RenderMeshObj(GameObjInst* GO)
 
 void ProcessPacketMessages(Packet& msg, GameData& data)
 {
-	if (msg.writePos == 0) return;
+	if (msg.id == PACKET_ERROR) return;
 
 	//Packet newPacket(msg);
 

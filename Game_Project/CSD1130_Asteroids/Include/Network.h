@@ -40,7 +40,7 @@ public:
 	void SendMessages(SOCKET clientSocket);
 	void ReceiveMessages(SOCKET udpSocket);
 	Packet GetIncomingMessage();
-	void CreateMessage(std::string msg);
+	void CreateMessage(Packet msg);
 
 private:
 	SOCKET udpSocket;
@@ -52,7 +52,7 @@ private:
 	std::thread recvThread;
 
 	std::queue<Packet> incomingMessages;
-	std::queue<std::string> outgoingMessages;
+	std::queue<Packet> outgoingMessages;
 	std::mutex inMutex;
 	std::mutex outMutex;
 
