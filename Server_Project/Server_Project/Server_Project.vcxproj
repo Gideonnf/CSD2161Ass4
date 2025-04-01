@@ -135,6 +135,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="highscores.h" />
+    <ClInclude Include="Network.h" />
+    <ClInclude Include="Packet.h" />
+    <ClInclude Include="Game.h" />
     <ClInclude Include="taskqueue.h" />
     <ClInclude Include="taskqueue.hpp" />
   </ItemGroup>

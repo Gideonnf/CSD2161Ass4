@@ -30,6 +30,8 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <filesystem>
 #include <unordered_map>
 #include <random>
+#include <mutex>
+#include <queue>
 
 // Tell the Visual Studio linker to include the following library in linking.
 // Alternatively, we could add this file to the linker command-line parameters,
@@ -38,7 +40,8 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <cstdio>
 #include <iostream>			   // cout, cerr
 #include <string>			     // string
-
+#include "Packet.h"
+#include "Network.h"
 #include "taskqueue.h"
 #include "highscores.h"
 
@@ -67,6 +70,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define RSP_SUBMIT_SCORE ((unsigned char)0x7)
 #define REQ_GET_SCORES ((unsigned char)0x8)
 #define RSP_GET_SCORES ((unsigned char)0x9)
+#define SLEEP_TIME 500
 
 // Add these new handler functions:
 
@@ -146,35 +150,15 @@ void HandleGetScores(SOCKET clientSocket)
 	// Send high scores to client
 	send(clientSocket, message, messageSize, 0);
 }
-void UDPSendingHandler(uint32_t sessionID);
+void UDPSendingHandler();
 void UDPReceiveHandler(SOCKET udpListenerSocket);
 
 static int userCount = 0;
 
-struct ClientInfo
-{
-	std::string ip;
-	uint16_t port;
+std::mutex lockMutex;
+std::queue<std::string> messageQueue;
 
-	int sessionID{};
-	//uint32_t seqNum{};
-	std::unordered_map<int, bool> ackReceived;
-
-	uint32_t fileSize{};
-	uint32_t numPackets{};
-	uint32_t currPackets{};
-	uint32_t retryCount{};
-
-	std::chrono::steady_clock::time_point startTime{};
-	double totalTime;
-
-	bool completed{ false };
-};
-
-// <sessionID, fileName>
-std::unordered_map<uint32_t, std::string> sessionMapFiles;
-std::unordered_map<uint32_t, ClientInfo> sessionClientMap;
-std::vector<SOCKET> clientSockets;
+static ServerData serverData;
 
 SOCKET udpListenerSocket = INVALID_SOCKET;
 std::string filePath; 
@@ -263,13 +247,7 @@ int main()
 
 	gethostname(host, MAX_STR_LEN);
 
-	//if (info != nullptr)
-	//{
-	//	freeaddrinfo(info);
-	//
-	//}
 	addrinfo* info = nullptr;
-
 
 	info = nullptr;
 	errorCode = getaddrinfo(host, portStringUDP.c_str(), &hints, &info);
@@ -288,7 +266,6 @@ int main()
 	std::cout << std::endl;
 	std::cout << "Server IP Address: " << serverIPAddr << std::endl;
 	std::cout << "Server UDP Port Number: " << portStringUDP << std::endl;
-
 
 	udpListenerSocket = socket(
 		hints.ai_family,
@@ -319,7 +296,7 @@ int main()
 		return RETURN_CODE_2;
 	}
 	std::thread udpThread(UDPReceiveHandler, udpListenerSocket);
-
+	std::thread udpSendThread(UDPSendingHandler);
 
 
 	// -------------------------------------------------------------------------
@@ -339,191 +316,64 @@ bool SimulatePacketLost()
 	return rand < PACKET_LOSS_RATE;
 }
 
-void UDPSendingHandler(uint32_t sessionID)
+void UDPSendingHandler()
 {
-	if (sessionMapFiles.count(sessionID) == 0)
+	const auto interval = std::chrono::duration<double>(0.01); // every 10 ms? idk for now
+	auto lastSendTime = std::chrono::steady_clock::now();
+
+	while (true)
 	{
-		// session ID not found
-		printf("SessionID not found");
-		return;
-	}
-
-	std::string fileName = sessionMapFiles[sessionID];
-	ClientInfo& client = sessionClientMap[sessionID];
-
-
-	struct sockaddr_in clientAddr;
-	clientAddr.sin_family = AF_INET;
-	clientAddr.sin_port = htons(client.port);
-	inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
-
-	std::filesystem::path currentPath = std::filesystem::current_path();
-	// all files stored in ServerProject/Files
-	std::filesystem::path combineFilePath = currentPath / filePath / fileName;
-
-	FILE* file = nullptr;
-	errno_t errorCode = fopen_s(&file, combineFilePath.string().c_str(), "rb");
-	if (errorCode != 0)
-	{
-		std::cout << "Unable to open file " << combineFilePath.string() << std::endl;
-	}
-
-	if (file == nullptr)
-	{
-		std::cout << "Unable to open file " << std::endl;
-		return;
-	}
-
-	fseek(file, 0, SEEK_END);
-	client.fileSize = ftell(file);
-	rewind(file);
-
-
-
-	char buffer[MAX_STR_LEN];
-	uint32_t seqNum = 0;
-	//std::unordered_map<int, bool> ackReceived;
-	int messageHeader = 8;
-
-	client.numPackets = client.fileSize / (MAX_STR_LEN - messageHeader) + ((client.fileSize % (MAX_STR_LEN - messageHeader) != 0) ? 1 : 0);
-
-	auto startFileSend = std::chrono::steady_clock::now();
-
-
-	while (!feof(file))
-	{
-		auto totalElapsedTime = std::chrono::steady_clock::now() - startFileSend;
-		int sentPackets = 0;
-		// send 5 packets first in one go
-		while (sentPackets < WINDOW_SIZE && !feof(file))
+		auto currTime = std::chrono::steady_clock::now();
+		// so that I only send out every interval time 
+		// timer
+		// every 0.01 maybe, Clear the msg queue by sending the message to every client
+		if (currTime - lastSendTime >= interval)
 		{
-			memset(buffer, 0, sizeof(buffer));
-			size_t bytesRead = fread(buffer, 1, (MAX_STR_LEN - 8), file);
-			char packet[MAX_STR_LEN];
-
-			uint32_t sessionIDNetworkOrder = htonl(sessionID);
-			uint32_t seqNumNetworkOrder = htonl(seqNum);
-			memcpy(packet, &sessionIDNetworkOrder, 4);
-			memcpy(packet + 4, &seqNumNetworkOrder, 4);
-			memcpy(packet + 8, buffer, bytesRead);
-
-			if (SIMULATE_PACKET_LOSS)
+			// set to the curr time it is resolving all messages
+			lastSendTime = currTime;
+			std::queue<std::string> messages;
 			{
-				if (SimulatePacketLost())
-				{
-					if (debugPrint)
-						std::cout << "Failed sending packet to " << sessionID << " with seq num " << seqNum << std::endl;
-				}
-				else
-				{
-					sendto(udpListenerSocket, packet, (int)bytesRead + messageHeader, 0, (struct sockaddr*)&clientAddr, sizeof(clientAddr));
-					if (debugPrint)
-						std::cout << "Sending packet to " << sessionID << " with seq num " << seqNum << std::endl;
-				}
-
-			}
-			else
-			{
-				sendto(udpListenerSocket, packet, (int)bytesRead + messageHeader, 0, (struct sockaddr*)&clientAddr, sizeof(clientAddr));
-			}
-			// store it's acknowledgement in a map to check for receiving back from client
-			client.ackReceived[seqNum] = false;
-			seqNum++;
-			sentPackets++;
-		}
-
-		//std::cout << "total Elasped " << std::chrono::duration_cast<std::chrono::milliseconds>(totalElapsedTime).count() << std::endl;
-
-		if (std::chrono::duration_cast<std::chrono::milliseconds>(totalElapsedTime).count() > PRINTOUT_MS)
-		{
-			startFileSend = std::chrono::steady_clock::now();
-			// calculate percentage of packets sent vs packets left
-			// num of packets sent / total packets * 100
-			//int percentageDone = (int)(((seqNum + 1) / (float)client.numPackets) * 100.0f);
-
-			std::lock_guard<std::mutex> userLock{ _stdoutMutex };
-			std::cout << "Progress of file transfer : " << seqNum << "/" << client.numPackets << std::endl;
-		}
-
-		// start a timer to check for time out
-		auto startTime = std::chrono::steady_clock::now();
-		while (1)
-		{
-
-			// not all packets have been received yet
-			bool allAcknowledged = true;
-			for (const auto& ack : client.ackReceived)
-			{
-				// if any isn't yet then break
-				if (ack.second == false)
-				{
-					allAcknowledged = false;
-					break;
-				}
+				std::lock_guard<std::mutex> lock(lockMutex);
+				// swap to the local queue of messages so I dont have to keep doing lock_guard shit
+				std::swap(messages, messageQueue);
 			}
 
-			// go to the next chunk
-			if (allAcknowledged) break;
-
-			// get the current elapsed time
-			auto elapsedTime = std::chrono::steady_clock::now() - startTime;
-
-
-			// if it reaches time out then find out which sequence didn't get received and send that
-			if (std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() > TIMEOUT_MS)
+			// loop through every message to send out
+			while (!messages.empty())
 			{
-				//std::cout << "Receiving timed out, resending any unacknowledged packets" << std::endl;
-
-				for (const auto& ackPair : client.ackReceived)
+				const std::string& msg = messages.front();
+				// loop through every client
+				for (int i = 0; i < MAX_CONNECTION; ++i)
 				{
-					if (ackPair.second == false)
-					{
-						// find out where the unacknowledged sequence start
-						fseek(file, ackPair.first * (MAX_STR_LEN - messageHeader), SEEK_SET);
-						memset(buffer, 0, sizeof(buffer));
-						size_t bytesRead = fread(buffer, 1, (MAX_STR_LEN - messageHeader), file);
+					ClientInfo& client = serverData.totalClients[i];
+					if (!client.connected) continue; // skip unconnected client slots
 
-						uint32_t sessionIDNetworkOrder = htonl(sessionID);
-						uint32_t seqNumNetworkOrder = htonl(ackPair.first);
-
-
-						char packet[MAX_STR_LEN];
-						memcpy(packet, &sessionIDNetworkOrder, 4);
-						memcpy(packet + 4, &seqNumNetworkOrder, 4);
-						memcpy(packet + 8, buffer, bytesRead);
-
-						sendto(udpListenerSocket, packet, (int)bytesRead + messageHeader, 0, (struct sockaddr*)&clientAddr, sizeof(clientAddr));
+					sockaddr_in clientAddr;
+					memset(&clientAddr, 0, sizeof(clientAddr));
+					clientAddr.sin_family = AF_INET;
+					clientAddr.sin_port = htons(client.port);
 					
-						//if (debugPrint)
-						{
-							std::lock_guard<std::mutex> userLock{ _stdoutMutex };
-							std::cout << "Resending packet " << ackPair.first << " to " << sessionID << std::endl;
-						}
+					// convert IP string to binary format
+					if (inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr) <= 0)
+					{
+						// invalid IP
+						continue;
 					}
+
+					// send it
+					sendto(udpListenerSocket, msg.c_str(), msg.size(), 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
 				}
 
-				client.retryCount++;
-				startTime = std::chrono::steady_clock::now();
+				// pop the message im using
+				messages.pop();
 			}
 
-			// if max retries
-			if (client.retryCount == MAX_RETRIES)
-			{
-				std::cout << "Reaching max retries for " << client.sessionID << ". Ending Thread." << std::endl;
-				break;
-			}
-		}
 
-		if (client.retryCount == MAX_RETRIES)
-		{
-			break;
 		}
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleep delay
+	
+		Sleep(SLEEP_TIME);
 	}
 
-	fclose(file);
-	printf("File transfer complete. \n");
 }
 
 void UDPReceiveHandler(SOCKET udpListenerSocket)
@@ -532,14 +382,14 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 	u_long enable = 1;
 	ioctlsocket(udpListenerSocket, FIONBIO, &enable);
 
-	while (1)
+	while (true)
 	{
-		char ackBuffer[8];
+		char buffer[MAX_STR_LEN];
 		struct sockaddr_in recvAddr;
 		int recvAddrLen = sizeof(recvAddr);
 
 		// receive from client
-		int recvLen = recvfrom(udpListenerSocket, ackBuffer, sizeof(ackBuffer), 0, (struct sockaddr*)&recvAddr, &recvAddrLen);
+		int recvLen = recvfrom(udpListenerSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&recvAddr, &recvAddrLen);
 
 		if (recvLen == SOCKET_ERROR)
 		{
@@ -551,18 +401,6 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 			}
 		}
 
-		//if (recvLen < 0)
-		//{
-		//	/*size_t errCode = WSAGetLastError();
-		//	if (errCode == WSAEWOULDBLOCK)
-		//	{
-		//		Sleep(200);
-		//		continue;
-		//	}*/
-		//	//Sleep(200);
-		//	continue;
-		//}
-
 		if (recvLen == 0)
 		{
 			// mutex lock
@@ -572,45 +410,12 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 
 		if (recvLen > 0)
 		{
+			char msgID = buffer[0];
 
-			uint32_t ackSessionID{};
-			uint32_t ackSeqNum{};
-			memcpy(&ackSessionID, ackBuffer, 4);
-			memcpy(&ackSeqNum, ackBuffer + 4, 4);
-			ackSessionID = ntohl(ackSessionID);
-			ackSeqNum = ntohl(ackSeqNum);
-
-			if (debugPrint)
-				std::cout << "Receiving packet from " << ackSessionID << " with seq num " << ackSeqNum << std::endl;
-
-			// Check through active file transfer list
-			// if client ID is the same as the sessionID
-			if (sessionClientMap.count(ackSessionID) == 0)
+			switch (msgID)
 			{
-				continue;
+
 			}
-
-			sessionClientMap[ackSessionID].ackReceived[ackSeqNum] = true;
-			// received a packet
-			sessionClientMap[ackSessionID].currPackets++;
-			// reset retry count if its successful
-			sessionClientMap[ackSessionID].retryCount = 0;
-
-			if (sessionClientMap[ackSessionID].currPackets == sessionClientMap[ackSessionID].numPackets)
-			{
-				auto chronoEnd = std::chrono::steady_clock::now() - sessionClientMap[ackSessionID].startTime;
-				sessionClientMap[ackSessionID].totalTime = (double)std::chrono::duration_cast<std::chrono::milliseconds>(chronoEnd).count();
-				// received all packets
-				sessionClientMap[ackSessionID].completed = true;
-
-				if (debugPrint)
-					std::cout << ackSessionID << " has finished downloading the file" << std::endl;
-
-				//break;
-
-				// send TCP msg for completed download
-			}
-
 		}
 
 
