@@ -215,6 +215,10 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 	sockaddr_in senderAddr;
 	int senderAddrSize = sizeof(senderAddr);
 	
+	// -- TODO -- Basically take this my client's gameStart time -= what frame time the server says we start at
+	// Which means that we can use the currTime to get my curr frame time to help sync
+	time(&gameStartTime);
+
 	while (connected)
 	{
 		char buffer[MAX_STR_LEN];

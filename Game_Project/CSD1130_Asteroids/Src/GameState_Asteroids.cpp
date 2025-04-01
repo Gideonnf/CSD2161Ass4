@@ -17,6 +17,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <Network.h>
 #include "main.h"
 #include "ProcessReceive.h"
+#include <sstream>
 /******************************************************************************/
 /*!
 	Define constant variables that we use in our game
@@ -310,6 +311,8 @@ void GameStateAsteroidsInit(void)
 /******************************************************************************/
 void GameStateAsteroidsUpdate(void)
 {
+	int playerInput = 0;
+
 	// =========================================================
 	// update according to input
 	// =========================================================
@@ -326,16 +329,7 @@ void GameStateAsteroidsUpdate(void)
 
 		gameData.spShip->pObject->pTexture = shipFireTexture;
 
-		// EXAMPLE OF USING PACKET
-		// ngl idk if all this will work yet until yy is done with sending and crystal is done with receiving in server
-		Packet newPacket(SHIP_MOVE);
-
-		newPacket << gameData.spShip->velCurr.x;
-		newPacket << gameData.spShip->velCurr.y;
-
-		{
-			NetworkClient::Instance().CreateMessage(newPacket.ToString());
-		}
+		playerInput = 1;
 	}
 
 	if (AEInputCheckCurr(AEVK_DOWN))
@@ -348,6 +342,8 @@ void GameStateAsteroidsUpdate(void)
 		AEVec2Scale(&dir, &dir, -SHIP_ACCEL_BACKWARD * (float)(AEFrameRateControllerGetFrameTime()) * 0.99f);
 		AEVec2Add(&gameData.spShip->velCurr, &gameData.spShip->velCurr, &dir);
 		gameData.spShip->pObject->pTexture = shipFireTexture;
+
+		playerInput = 2;
 	}
 
 	if (AEInputCheckCurr(AEVK_LEFT))
@@ -355,6 +351,8 @@ void GameStateAsteroidsUpdate(void)
 		// Rotate the ship, wrap the angle
 		gameData.spShip->dirCurr += SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
 		gameData.spShip->dirCurr =  AEWrap(gameData.spShip->dirCurr, -PI, PI);
+
+		playerInput = 3;
 	}
 
 	if (AEInputCheckCurr(AEVK_RIGHT))
@@ -362,6 +360,8 @@ void GameStateAsteroidsUpdate(void)
 		// Rotate the ship, wrap the angle
 		gameData.spShip->dirCurr -= SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
 		gameData.spShip->dirCurr =  AEWrap(gameData.spShip->dirCurr, -PI, PI);
+
+		playerInput = 4;
 	}
 
 	if (gameOver)
@@ -387,7 +387,30 @@ void GameStateAsteroidsUpdate(void)
 		vel.x = BULLET_SPEED * cosf(gameData.spShip->dirCurr);
 		vel.y = BULLET_SPEED * sinf(gameData.spShip->dirCurr);
 		AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-		gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, gameData.spShip->dirCurr);
+		GameObjInst* bulletObj = gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, gameData.spShip->dirCurr);
+		unsigned int bulletID{};
+
+		for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
+		{
+			GameObjInst* pInst = gameData.sGameObjInstList + i;
+			if (pInst == bulletObj)
+			{
+				bulletID = i;
+				break;
+			}
+		}
+
+		{
+			std::stringstream ss;
+			time_t timestamp;
+			time(&timestamp);
+			ss << CMDID::BULLET_CREATED << "Time:" << timestamp << ' ' <<
+				"ID:" << bulletID <<
+				"Pos:" << pos.x << ' ' << pos.y << ' ' <<
+				"Vel:" << vel.x << ' ' << vel.y << ' ' <<
+				"Dir:" << gameData.spShip->dirCurr;
+			NetworkClient::Instance().CreateMessage(ss.str());
+		}
 
 		/*if (shipShotgun == 1)
 		{
@@ -466,7 +489,22 @@ void GameStateAsteroidsUpdate(void)
 
 	// Update the GOs (i.e movement, etc)
 	UpdateGO();
-		
+	
+	if (playerInput != 0)
+	{
+		//Packet p(CMDID::SHIP_MOVE);
+
+		std::stringstream ss;
+		time_t timestamp;
+		time(&timestamp);
+		ss << CMDID::SHIP_MOVE << "Time:" << timestamp << ' ' <<
+			"Input:" << playerInput << ' ' <<
+			"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
+			"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
+			"Dir:" << gameData.spShip->dirCurr;
+		NetworkClient::Instance().CreateMessage(ss.str());
+	}
+
 	// =====================================================================
 	// calculate the matrix for all objects
 	// =====================================================================
@@ -797,7 +835,6 @@ void CheckGOCollision()
 				case TYPE_BULLET:
 					if (CollisionIntersection_RectRect(pInst_1->boundingBox, pInst_1->velCurr, pInst_2->boundingBox, pInst_2->velCurr, firstTimeOfCollision))
 					{
-
 						// Destroy both the bullet and asteroid after
 						gameObjInstDestroy(pInst_1);
 						gameObjInstDestroy(pInst_2);
@@ -810,6 +847,18 @@ void CheckGOCollision()
 							if (gameData.sScore >= 5000)
 								gameOver = true;
 						}
+
+						{
+							std::stringstream ss;
+							time_t timestamp;
+							time(&timestamp);
+							ss << CMDID::BULLET_COLLIDE << "Time:" << timestamp << ' ' <<
+								"BulletID:" << j << ' ' <<
+								"AsteroidID:" << i << ' ' <<
+								"PlayerScore:" << gameData.sScore;
+							NetworkClient::Instance().CreateMessage(ss.str());
+						}
+
 					}
 					break;
 
@@ -822,6 +871,16 @@ void CheckGOCollision()
 						gameObjInstDestroy(pInst_1);
 
 						ResetShip();
+
+						{
+							std::stringstream ss;
+							time_t timestamp;
+							time(&timestamp);
+							ss << CMDID::SHIP_COLLIDE << "Time:" << timestamp << ' ' <<
+								"AsteroidID:" << i;
+							NetworkClient::Instance().CreateMessage(ss.str());
+						}
+
 					}
 					break;
 				}
@@ -974,3 +1033,31 @@ void RenderMeshObj(GameObjInst* GO)
 //}
 
 
+void ProcessPacketMessages(std::string msg, GameData& data)
+{
+	if (msg.empty()) return;
+
+	Packet newPacket(msg);
+
+	//	char msgID = msg[0];
+
+
+	switch (newPacket.id)
+	{
+		// switch cases
+	case ASTEROID_CREATED: // temporary
+		ProcessNewAsteroid(newPacket, data);
+		break;
+	}
+}
+
+void ProcessNewAsteroid(Packet& packet, GameData& data)
+{
+	float xPos;
+	packet >> xPos;
+
+
+
+
+
+}
