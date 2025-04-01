@@ -362,11 +362,9 @@ int main()
 					break;
 				}
 				case NEW_PLAYER_JOIN:
-
+				{
 					// create the message buffer ifrst
-					buffer[0] = NEW_PLAYER_JOIN;
-					offset++;
-					std::memcpy(buffer + offset, msg.data.body + 1, msg.data.writePos);
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
 					offset += sizeof(msg.data.writePos);
 
 					// loop through every client to send this msg to them
@@ -394,6 +392,7 @@ int main()
 						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
 					}
 					break;
+				}
 				case SHIP_MOVE:
 					break;
 
@@ -505,8 +504,6 @@ void ProcessPlayerJoin( const sockaddr_in& clientAddr, const char* buffer,  int 
 	// send back to the connecting player the reply
 	Packet replyPacket(REPLY_PLAYER_JOIN);
 	replyPacket << availID; // pack the ship's ID in 
-	// NOTE: This isn't the right way to send the msg to client
-	// we still need to do proper header management (i.e checksum/seq number/all that jazz shit things)
 	//std::string message = replyPacket.ToString(); 
 	// send to the client
 	{

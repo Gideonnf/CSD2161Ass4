@@ -1024,6 +1024,10 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		msg >> clientID;
 
 		break;
+	case NEW_PLAYER_JOIN:
+		msg >> clientID;
+
+		break;
 		// switch cases
 	case ASTEROID_CREATED: // temporary
 		ProcessNewAsteroid(msg, data);
