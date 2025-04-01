@@ -38,12 +38,14 @@ int NetworkClient::Init()
 	std::string udpPortString; // Server Port
 	std::string clientUDPPortString;
 
-	while (getline(serverConfigFile, fileText))
-	{
-		std::istringstream stream(fileText);
+	std::getline(serverConfigFile, host);
+	std::getline(serverConfigFile, udpPortString);
+	std::getline(serverConfigFile, clientUDPPortString);
 
-		stream >> host >> udpPortString >> clientUDPPortString;
-	}
+	serverIP = host;
+	serverPort = udpPortString;
+
+	//std::cout << host << " " << udpPortString << " " << clientUDPPortString << std::endl;
 
 	serverConfigFile.close();
 
@@ -118,6 +120,13 @@ int NetworkClient::Init()
 	recvThread.detach();
 	senderThread = std::thread(&NetworkClient::SendMessages, this, udpSocket);
 	senderThread.detach();
+
+
+	/*std::string meowText = "3meow";
+	{
+		std::lock_guard<std::mutex> lock(outMutex);
+		outgoingMessages.push(meowText);
+	}*/
 }
 
 NetworkClient::~NetworkClient()
@@ -193,7 +202,7 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 			sockaddr_in udpServerAddress = {};
 			udpServerAddress.sin_family = AF_INET;
 			udpServerAddress.sin_port = htons(9999);
-			inet_pton(AF_INET, "192.168.1.13", &udpServerAddress.sin_addr);
+			inet_pton(AF_INET, serverIP.c_str(), &udpServerAddress.sin_addr);
 
 			int sentBytes = sendto(clientSocket, buffer, headerOffset, 0,
 				reinterpret_cast<sockaddr*>(&udpServerAddress), sizeof(udpServerAddress));
