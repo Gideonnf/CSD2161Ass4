@@ -5,7 +5,7 @@
 #include "Packet.h"
 
 
-void ProcessPacketMessages(std::string msg, GameData& data);
+void ProcessPacketMessages(Packet& msg, GameData& data);
 void ProcessNewAsteroid(Packet& packet, GameData& data);
 
 

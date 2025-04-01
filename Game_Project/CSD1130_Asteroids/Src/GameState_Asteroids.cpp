@@ -683,7 +683,7 @@ void GameStateAsteroidsUnload(void)
 
 void GameStateAsteroidsProcessMessage()
 {
-	std::string msg = NetworkClient::Instance().GetIncomingMessage();
+	Packet msg = NetworkClient::Instance().GetIncomingMessage();
 	// so that i dont have to work on the same file
 	// ill handle all message processing in ProcessReceive.h
 	ProcessPacketMessages(msg, gameData);
@@ -1008,45 +1008,25 @@ void RenderMeshObj(GameObjInst* GO)
 
 }
 
-//
-//void ProcessPacketMessages(std::string msg, GameData& data)
-//{
-//	if (msg.empty()) return;
-//
-//	Packet newPacket(msg);
-//
-//	//	char msgID = msg[0];
-//
-//
-//	switch (newPacket.id)
-//	{
-//		// switch cases
-//	case ASTEROID_CREATED: // temporary
-//		ProcessNewAsteroid(newPacket, data);
-//		break;
-//	}
-//}
-//
-//void ProcessNewAsteroid(Packet& packet, GameData& data)
-//{
-//
-//}
-
-
-void ProcessPacketMessages(std::string msg, GameData& data)
+void ProcessPacketMessages(Packet& msg, GameData& data)
 {
-	if (msg.empty()) return;
+	if (msg.writePos == 0) return;
 
-	Packet newPacket(msg);
+	//Packet newPacket(msg);
 
 	//	char msgID = msg[0];
 
+	int32_t clientID;
 
-	switch (newPacket.id)
+	switch (msg.id)
 	{
+	case REPLY_PLAYER_JOIN:
+		msg >> clientID;
+
+		break;
 		// switch cases
 	case ASTEROID_CREATED: // temporary
-		ProcessNewAsteroid(newPacket, data);
+		ProcessNewAsteroid(msg, data);
 		break;
 	}
 }

@@ -22,27 +22,17 @@ enum CMDID : unsigned char {
 	PACKET_ERROR
 };
 
-struct MessageData
-{
-	// header stuff
-	// idk?
-	CMDID commandID;
-	int sessionID{};
-	int seqNum{};
-	int fileLength{};
-	int headerOffset{};
-	int dataLength{};
-	std::string data{};
-};
-
-
-
 struct Packet
 {
 	char body[MAX_BODY_LEN];
 	CMDID id;
 	size_t writePos = 0;
 	size_t readPos = 0;
+
+	Packet() : id{PACKET_ERROR}
+	{
+		std::memset(body, 0, MAX_BODY_LEN);
+	}
 
 	Packet(CMDID packetID) : id(packetID)
 	{
@@ -93,6 +83,24 @@ struct Packet
 		return str;
 	}
 };
+
+
+struct MessageData
+{
+	// header stuff
+	// idk?
+	CMDID commandID;
+	int sessionID{};
+	int seqNum{};
+	int fileLength{};
+	int headerOffset{};
+	int dataLength{};
+	Packet data{};
+};
+
+
+
+
 
 #pragma region DEFAULT_TEMPLATE
 template <typename T>

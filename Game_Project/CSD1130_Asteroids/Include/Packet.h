@@ -5,35 +5,22 @@
 #define MAX_BODY_LEN		2000 // change after we decide how big header should be
 
 // Command ID stuff
-enum CMDID {
-	PLAYER_DC = (unsigned char)0x1,
-	PLAYER_JOIN = (unsigned char)0x2,
-	BULLET_COLLIDE = (unsigned char)0x3,
-	BULLET_CREATED = (unsigned char)0x4,
-	ASTEROID_CREATED = (unsigned char)0x5,
-	ASTEROID_DESTROYED = (unsigned char)0x6,
-	SHIP_MOVE = (unsigned char)0x7,
-	SHIP_COLLIDE = (unsigned char)0x8,
-	REQ_HIGHSCORE = (unsigned char)0x9,
-	NEW_HIGHSCORE = (unsigned char)0x10,
-	GAME_START = (unsigned char)0x20,
-	PACKET_ERROR = (unsigned char)0x30
+enum CMDID : unsigned char {
+	PLAYER_DC = 1,
+	PLAYER_JOIN,
+	REPLY_PLAYER_JOIN,
+	NEW_PLAYER_JOIN,
+	BULLET_COLLIDE,
+	BULLET_CREATED,
+	ASTEROID_CREATED,
+	ASTEROID_DESTROYED,
+	SHIP_MOVE,
+	SHIP_COLLIDE,
+	REQ_HIGHSCORE,
+	NEW_HIGHSCORE,
+	GAME_START,
+	PACKET_ERROR
 };
-
-struct MessageData
-{
-	// header stuff
-	// idk?
-	CMDID commandID;
-	int sessionID{};
-	int seqNum{};
-	int fileLength{};
-	int headerOffset{};
-	int dataLength{};
-	std::string data{};
-};
-
-
 
 struct Packet
 {
@@ -41,6 +28,11 @@ struct Packet
 	CMDID id;
 	size_t writePos = 0;
 	size_t readPos = 0;
+
+	Packet() : id{ PACKET_ERROR }
+	{
+		std::memset(body, 0, MAX_BODY_LEN);
+	}
 
 	Packet(CMDID packetID) : id(packetID)
 	{
@@ -91,6 +83,24 @@ struct Packet
 		return str;
 	}
 };
+
+
+struct MessageData
+{
+	// header stuff
+	// idk?
+	CMDID commandID;
+	int sessionID{};
+	int seqNum{};
+	int fileLength{};
+	int headerOffset{};
+	int dataLength{};
+	Packet data{};
+};
+
+
+
+
 
 #pragma region DEFAULT_TEMPLATE
 template <typename T>

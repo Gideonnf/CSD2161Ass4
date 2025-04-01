@@ -121,12 +121,11 @@ int NetworkClient::Init()
 	senderThread = std::thread(&NetworkClient::SendMessages, this, udpSocket);
 	senderThread.detach();
 
-
-	/*std::string meowText = "3meow";
+	Packet newPlayer(PLAYER_JOIN);
 	{
 		std::lock_guard<std::mutex> lock(outMutex);
-		outgoingMessages.push(meowText);
-	}*/
+		outgoingMessages.push(newPlayer.ToString());
+	}
 }
 
 NetworkClient::~NetworkClient()
@@ -189,14 +188,14 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 
 			std::string messageStr = outMsg.substr(1);
 			
-			uint32_t fileLength = static_cast<uint32_t>(messageStr.size());
-			memcpy(buffer + headerOffset, &fileLength, sizeof(fileLength));
+			//uint32_t fileLength = static_cast<uint32_t>(messageStr.size());
+			//memcpy(buffer + headerOffset, &fileLength, sizeof(fileLength));
 
-			headerOffset += 4;
+			//headerOffset += 4;
 
 
-			memcpy(buffer + headerOffset, messageStr.c_str(), fileLength);
-			headerOffset += fileLength;
+			memcpy(buffer + headerOffset, messageStr.c_str(), messageStr.size());
+			headerOffset += messageStr.size();
 
 
 			sockaddr_in udpServerAddress = {};
@@ -237,24 +236,33 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 
 		if (receivedBytes != SOCKET_ERROR)
 		{
-			buffer[receivedBytes] = '\0';
+			int offset = 0;
+			//buffer[receivedBytes] = '\0';
+			char msgID = buffer[0];
+			offset++;
+			// get the file length
+			uint32_t msgLength;
+			memcpy(&msgLength, buffer + offset, sizeof(msgLength));
+			msgLength = ntohl(msgLength);
+			offset += sizeof(msgLength);
 
-			// idk if we're going to process the string here into a message struct
-			// or leave it as a string then process it in gamestate_asteroids or smth
+			Packet newPacket(static_cast<CMDID>(msgID));
+			newPacket.writePos = msgLength;
+			memcpy(newPacket.body, buffer + offset, msgLength);
 
-			//{
-			//std::lock_guard<std::mutex> lock(inMutex);
-			//incomingMessages.push(buffer);
-			//}
+			{
+			std::lock_guard<std::mutex> lock(inMutex);
+			incomingMessages.push(newPacket);
+			}
 		}
 
 		Sleep(SLEEP_TIME);
 	}
 }
 
-std::string NetworkClient::GetIncomingMessage()
+Packet NetworkClient::GetIncomingMessage()
 {
-	std::string outMsg{};
+	Packet outMsg{};
 	{
 		std::lock_guard<std::mutex> lock(inMutex);
 		if (!incomingMessages.empty())

@@ -179,10 +179,6 @@ int main()
 	std::getline(std::cin, input);
 	std::string portStringUDP = input;
 
-	std::cout << "File Path: ";
-	std::getline(std::cin, input);
-	filePath = input;
-
 	unsigned seed = (unsigned int)std::chrono::system_clock::now().time_since_epoch().count();
 	generator = std::mt19937(seed);
 
@@ -298,28 +294,8 @@ int main()
 		return RETURN_CODE_2;
 	}
 	std::thread udpThread(UDPReceiveHandler, udpListenerSocket);
-	std::thread udpSendThread(UDPSendingHandler);
+	//std::thread udpSendThread(UDPSendingHandler);
 
-
-	// -------------------------------------------------------------------------
-	// Clean-up after Winsock.
-	//
-	// WSACleanup()
-	// -------------------------------------------------------------------------
-
-	WSACleanup();
-}
-
-
-bool SimulatePacketLost()
-{
-	double rand = dis(generator);
-	//std::cout << rand << std::endl;
-	return rand < PACKET_LOSS_RATE;
-}
-
-void UDPSendingHandler()
-{
 	const auto interval = std::chrono::duration<double>(0.01); // every 10 ms? idk for now
 	auto lastSendTime = std::chrono::steady_clock::now();
 
@@ -348,37 +324,46 @@ void UDPSendingHandler()
 				std::memset(buffer, 0, sizeof(buffer));
 
 				const MessageData& msg = messages.front();
+				char msgID = msg.data.id; // either msg.commandID or msg.data.id
 
-				switch (msg.commandID)
+				//std::string messageBody = msg.data.substr(1); // get rid of the 1st char as it's the commandID
+				// ID of the message
+				buffer[0] = msgID;
+				offset++;
+
+				// add the length of the message
+				uint32_t messageLength = static_cast<uint32_t>(msg.data.writePos); // writePos represents how much was written
+				messageLength = htonl(messageLength);
+				std::memcpy(buffer + offset, &messageLength, sizeof(messageLength));
+				offset += sizeof(messageLength);
+
+				switch (msgID)
 				{
-					case REPLY_PLAYER_JOIN:
-					{
-						 // this only sends to 1 client
+				case REPLY_PLAYER_JOIN:
+				{
+					// this only sends to 1 client
 
-						sockaddr_in otherAddr;
-						memset(&otherAddr, 0, sizeof(otherAddr));
-						otherAddr.sin_family = AF_INET;
-						// get the port of the target client
-						otherAddr.sin_port = htons(serverData.totalClients[msg.sessionID].port);
-						// get the ip of the target client
-						inet_pton(AF_INET, serverData.totalClients[msg.sessionID].ip.c_str(), &otherAddr.sin_addr);
-
-						
-						buffer[0] = REPLY_PLAYER_JOIN;
-						offset++;
-						std::memcpy(buffer + offset, msg.data.c_str(), sizeof(msg.data));
-						offset += sizeof(msg.data);
-						// send it TODO: i forgot if offset should be used here
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
-						break;
-					}
+					sockaddr_in otherAddr;
+					memset(&otherAddr, 0, sizeof(otherAddr));
+					otherAddr.sin_family = AF_INET;
+					// get the port of the target client
+					otherAddr.sin_port = htons(serverData.totalClients[msg.sessionID].port);
+					// get the ip of the target client
+					inet_pton(AF_INET, serverData.totalClients[msg.sessionID].ip.c_str(), &otherAddr.sin_addr);
+					// body of the message
+					std::memcpy(buffer + offset, msg.data.body + 1, msg.data.writePos);
+					offset += msg.data.writePos;
+					// send it TODO: i forgot if offset should be used here
+					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
+					break;
+				}
 				case NEW_PLAYER_JOIN:
 
 					// create the message buffer ifrst
 					buffer[0] = NEW_PLAYER_JOIN;
 					offset++;
-					std::memcpy(buffer + offset, msg.data.c_str(), sizeof(msg.data));
-					offset += sizeof(msg.data);
+					std::memcpy(buffer + offset, msg.data.body + 1, msg.data.writePos);
+					offset += sizeof(msg.data.writePos);
 
 					// loop through every client to send this msg to them
 					for (int i = 0; i < MAX_CONNECTION; ++i)
@@ -412,13 +397,29 @@ void UDPSendingHandler()
 				// pop the message im using
 				messages.pop();
 			}
-
-
 		}
-	
+
 		Sleep(SLEEP_TIME);
 	}
+	// -------------------------------------------------------------------------
+	// Clean-up after Winsock.
+	//
+	// WSACleanup()
+	// -------------------------------------------------------------------------
 
+	WSACleanup();
+}
+
+
+bool SimulatePacketLost()
+{
+	double rand = dis(generator);
+	//std::cout << rand << std::endl;
+	return rand < PACKET_LOSS_RATE;
+}
+
+void UDPSendingHandler()
+{
 }
 
 void UDPReceiveHandler(SOCKET udpListenerSocket)
@@ -472,7 +473,7 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 
 void ProcessPlayerJoin( const sockaddr_in& clientAddr, const char* buffer,  int recvLen)
 {
-	int availID = -1;
+	int32_t availID = -1;
 	for (int i = 0; i < MAX_CONNECTION; ++i)
 	{
 		if (!serverData.totalClients[i].connected)
@@ -502,13 +503,13 @@ void ProcessPlayerJoin( const sockaddr_in& clientAddr, const char* buffer,  int 
 	replyPacket << availID; // pack the ship's ID in 
 	// NOTE: This isn't the right way to send the msg to client
 	// we still need to do proper header management (i.e checksum/seq number/all that jazz shit things)
-	std::string message = replyPacket.ToString(); 
+	//std::string message = replyPacket.ToString(); 
 	// send to the client
 	{
 		MessageData newMessage;
 		newMessage.commandID = replyPacket.id;
 		newMessage.sessionID = newClient.sessionID;
-		newMessage.data = message;
+		newMessage.data = replyPacket;
 
 		std::lock_guard<std::mutex> lock(lockMutex);
 		messageQueue.push(newMessage);
@@ -516,13 +517,13 @@ void ProcessPlayerJoin( const sockaddr_in& clientAddr, const char* buffer,  int 
 
 	Packet newPlayerPacket(NEW_PLAYER_JOIN);
 	newPlayerPacket << newClient.sessionID; // i think i should be packing the ID of the new client??
-	message = newPlayerPacket.ToString();
+	//message = newPlayerPacket.ToString();
 
 	{
 		MessageData newMessage;
 		newMessage.commandID = newPlayerPacket.id;
 		newMessage.sessionID = newClient.sessionID;// sending to the current client's id which is i 
-		newMessage.data = message;
+		newMessage.data = newPlayerPacket;
 
 		std::lock_guard<std::mutex> lock(lockMutex);
 		messageQueue.push(newMessage);
