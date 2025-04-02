@@ -86,7 +86,7 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 void HandleGetScores(SOCKET clientSocket);
 void UDPSendingHandler();
 void UDPReceiveHandler(SOCKET udpListenerSocket);
-
+void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int recvLen);
 void ProcessBulletFired(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 void ProcessBulletCollision(uint32_t bulletID, uint32_t targetID, uint8_t targetType);
 void ProcessAsteroidCreated(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
@@ -331,10 +331,18 @@ int main()
 					{
 						Packet newPlayer(NEW_PLAYER_JOIN);
 
+						newPlayer << playerIDs.size(); // add how many players are connected
+
 						for (int i = 0; i < playerIDs.size(); ++i)
 						{
 							// add all the player ids
 							newPlayer << playerIDs[i];
+							ClientInfo& info = serverData.totalClients[playerIDs[i]];
+							newPlayer << info.playerShip.xPos;
+							newPlayer << info.playerShip.yPos;
+							newPlayer << info.playerShip.vel_x;
+							newPlayer << info.playerShip.vel_y;
+							newPlayer << info.playerShip.dirCur;
 						}
 
 
@@ -680,6 +688,7 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				ProcessPlayerJoin(recvAddr, buffer, recvLen);
 				break;
 			case SHIP_MOVE:
+				ProcessShipMovement(recvAddr, buffer, recvLen);
 				break;
 			case REPLY_PLAYER_JOIN:
 				ProcessReplyPlayerJoin(recvAddr, buffer, recvLen);
@@ -757,13 +766,13 @@ void HandleGetScores(SOCKET clientSocket)
 	for (const auto &score : topScores)
 	{
 		// Add player name length
-		uint32_t nameLength = static_cast<uint32_t>(score.playerName.length());
+		uint32_t nameLength = static_cast<uint32_t>(score.playerName.size()); // Use string size
 		uint32_t nameLengthNetworkOrder = htonl(nameLength);
 		memcpy(&message[messageSize], &nameLengthNetworkOrder, sizeof(nameLengthNetworkOrder));
 		messageSize += sizeof(nameLengthNetworkOrder);
 
 		// Add player name
-		memcpy(&message[messageSize], score.playerName.c_str(), nameLength);
+		memcpy(&message[messageSize], score.playerName.c_str(), nameLength); // Use c_str() to get raw pointer
 		messageSize += nameLength;
 
 		// Add score
@@ -775,6 +784,7 @@ void HandleGetScores(SOCKET clientSocket)
 	// Send high scores to client
 	send(clientSocket, message, messageSize, 0);
 }
+
 void HandleSubmitScore(char *buffer, SOCKET clientSocket)
 {
 	int offset = 1;  // Skip command ID
@@ -882,6 +892,8 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 	newClient.ip = inet_ntoa(clientAddr.sin_addr);
 	newClient.port = ntohs(clientAddr.sin_port);
 	newClient.connected = true;
+
+	serverData.playerMap[newClient.ip] = availID;
 
 	// default initialize ship data
 	// send back to the connecting player the reply
@@ -1033,6 +1045,33 @@ void ProcessBulletCollision(uint32_t bulletID, uint32_t targetID, uint8_t target
 
 	std::lock_guard<std::mutex> lock(lockMutex);
 	messageQueue.push(bulletMsg);
+}
+
+void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int recvLen)
+{
+	std::string ip = inet_ntoa(clientAddr.sin_addr);
+	// get the id of the ship thats moving
+	ClientInfo& client = serverData.totalClients[serverData.playerMap[ip]];
+	int offset = 1;
+
+	// get rid of header data
+	uint32_t msgLength;
+	std::memcpy(&msgLength, buffer + offset, sizeof(msgLength));
+	msgLength = ntohl(msgLength);
+	offset += sizeof(msgLength);
+
+	Packet shipMovement(SHIP_MOVE);
+	shipMovement.writePos = msgLength;
+	std::memcpy(shipMovement.body, buffer + offset, msgLength);
+
+	int playerInput;
+	shipMovement >> playerInput;
+	shipMovement >> client.playerShip.xPos;
+	shipMovement >> client.playerShip.yPos;
+	shipMovement >> client.playerShip.vel_x;
+	shipMovement >> client.playerShip.vel_y;
+	shipMovement >> client.playerShip.dirCur;
+	
 }
 
 // Helper function to respawn a ship
@@ -1273,7 +1312,9 @@ void HandleNewHighscore(const char *buffer, int recvLen, const sockaddr_in &clie
 	}
 
 	// Extract player name
-	std::string playerName(buffer + offset, nameLength);
+	char playerName[20] = {};
+	std::memcpy(playerName, buffer + offset, 20);
+	offset += 20;
 	offset += nameLength;
 
 	// Extract score

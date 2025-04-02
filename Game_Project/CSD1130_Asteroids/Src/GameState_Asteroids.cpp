@@ -824,7 +824,7 @@ void UpdateGO()
 /// </summary>
 void CheckGOCollision()
 {
-	for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
+	for (uint32_t i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
 		GameObjInst* pInst_1 = gameData.sGameObjInstList + i;
 
@@ -835,7 +835,7 @@ void CheckGOCollision()
 		// If its an asteroid, then start checking for collision against ship or bullet
 		if (pInst_1->pObject->type == TYPE_ASTEROID)
 		{
-			for (unsigned long j = 0; j <  GAME_OBJ_INST_NUM_MAX; j++)
+			for (uint32_t j = 0; j <  GAME_OBJ_INST_NUM_MAX; j++)
 			{
 				GameObjInst* pInst_2 = gameData.sGameObjInstList + j;
 				if ((pInst_2->flag & FLAG_ACTIVE) == 0) continue;
@@ -1043,10 +1043,17 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	case NEW_PLAYER_JOIN:
 	{
 		// get how many player ids to pull
-		size_t num = msg.writePos / sizeof(int32_t);
+		size_t num;
+		msg >> num; // get the num of players
 		for (size_t i = 0; i < num; ++i)
 		{
 			msg >> clientID;
+			msg >> (float)gameData.spShip[clientID]->posCurr.x;
+			msg >> (float)gameData.spShip[clientID]->posCurr.y;
+			msg >> (float)gameData.spShip[clientID]->velCurr.x;
+			msg >> (float)gameData.spShip[clientID]->velCurr.x;
+			msg >> gameData.spShip[clientID]->dirCurr;
+
 			gameData.spShip[clientID]->active = true;
 		}
 
