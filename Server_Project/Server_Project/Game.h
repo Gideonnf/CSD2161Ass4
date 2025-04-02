@@ -14,6 +14,7 @@ struct Ship
 	float vel_y;
 	float vel_server_x;
 	float vel_server_y;
+	float dirCur;
 	int score;
 	int ID;
 	TARGETTYPE targetType = TARGET_TYPE_SHIP;
