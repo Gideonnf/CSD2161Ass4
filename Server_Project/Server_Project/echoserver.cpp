@@ -245,7 +245,7 @@ int main()
 	std::thread udpThread(UDPReceiveHandler, udpListenerSocket);
 	//std::thread udpSendThread(UDPSendingHandler);
 
-	const auto interval = std::chrono::duration<double>(0.01); // every 10 ms? idk for now
+	const auto interval = std::chrono::duration<double>(0.005); // every 10 ms? idk for now
 	auto lastSendTime = std::chrono::steady_clock::now();
 
 	auto lastPrintTime = std::chrono::steady_clock::now();
@@ -520,7 +520,7 @@ int main()
 
 		}
 
-		Sleep(SLEEP_TIME);
+		//Sleep(SLEEP_TIME);
 	}
 	// -------------------------------------------------------------------------
 	// Clean-up after Winsock.

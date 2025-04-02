@@ -224,7 +224,7 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 
 		}
 
-		Sleep(SLEEP_TIME);
+		//Sleep(SLEEP_TIME);
 	}
 }
 //Take out the header and parse the message before adding it into the queue
@@ -271,7 +271,7 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 			}
 		}
 
-		Sleep(SLEEP_TIME);
+		//Sleep(SLEEP_TIME);
 	}
 }
 
