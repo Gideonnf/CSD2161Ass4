@@ -102,6 +102,7 @@ void ProcessNewPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int
 void ProcessGameStart(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 void ProcessPacketError(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 
+void RespawnShip(uint32_t playerID);
 
 static int userCount = 0;
 
@@ -594,7 +595,7 @@ int main()
 					break;
 				case PACKET_ERROR:
 					// Send error response to specific client
-					sockaddr_in otherAddr;
+					/*sockaddr_in otherAddr;
 					memset(&otherAddr, 0, sizeof(otherAddr));
 					otherAddr.sin_family = AF_INET;
 					otherAddr.sin_port = htons(serverData.totalClients[msg.sessionID].port);
@@ -602,7 +603,7 @@ int main()
 
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
 					offset += msg.data.writePos;
-					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&otherAddr, sizeof(otherAddr));
+					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&otherAddr, sizeof(otherAddr));*/
 					break;
 				}
 				// pop the message im using
@@ -708,6 +709,7 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				ProcessAsteroidDestroyed(buffer, recvLen);
 				break;
 			case SHIP_RESPAWN:
+			{
 				if (recvLen < 5) break; // Ensure buffer has enough data
 
 				uint32_t playerID;
@@ -715,6 +717,8 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 
 				RespawnShip(playerID);
 				break;
+
+			}
 			case SHIP_COLLIDE:
 				ProcessShipCollision(buffer, recvLen);
 				break;
@@ -946,7 +950,7 @@ void ProcessBulletFired(const sockaddr_in &clientAddr, const char *buffer, int r
 
 	// Create a message to broadcast to all clients that a bullet was fired
 	Packet bulletPacket(BULLET_CREATED);
-	bulletPacket << bulletID;
+	bulletPacket << static_cast<int32_t>(bulletID);
 	bulletPacket << playerID;
 	bulletPacket << xPos << yPos << velX << velY;
 
