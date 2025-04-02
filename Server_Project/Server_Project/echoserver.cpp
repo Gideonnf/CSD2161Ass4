@@ -96,6 +96,12 @@ void HandleHighscoreRequest(const sockaddr_in &clientAddr);
 void HandleNewHighscore(const char *buffer, int recvLen, const sockaddr_in &clientAddr);
 void BroadcastHighScores();
 
+void ProcessReplyPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
+void ProcessNewPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
+void ProcessGameStart(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
+void ProcessPacketError(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
+
+
 static int userCount = 0;
 
 std::mutex lockMutex;
@@ -410,10 +416,11 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				break;
 			case SHIP_MOVE:
 				break;
-
 			case REPLY_PLAYER_JOIN:
+				ProcessReplyPlayerJoin(recvAddr, buffer, recvLen);
 				break;
 			case NEW_PLAYER_JOIN:
+				ProcessNewPlayerJoin(recvAddr, buffer, recvLen);
 				break;
 			case BULLET_COLLIDE:    
 				if (recvLen < 9) break; // Ensure buffer contains enough bytes (1 byte msgID + 8 bytes data)
@@ -453,10 +460,11 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 			case NEW_HIGHSCORE:
 				HandleNewHighscore(buffer, recvLen, recvAddr);
 				break;
-
 			case GAME_START:
+				ProcessGameStart(recvAddr, buffer, recvLen);
 				break;
 			case PACKET_ERROR:
+				ProcessPacketError(recvAddr, buffer, recvLen);
 				break;
 			}
 		}
@@ -903,7 +911,6 @@ void ProcessShipCollision(const char *buffer, int recvLen)
 	std::lock_guard<std::mutex> lock(lockMutex);
 	messageQueue.push(collisionMsg);
 }
-
 void HandleHighscoreRequest(const sockaddr_in &clientAddr)
 {
 	// Create response packet
@@ -933,7 +940,6 @@ void HandleHighscoreRequest(const sockaddr_in &clientAddr)
 		messageQueue.push(newMessage);
 	}
 }
-
 void HandleNewHighscore(const char *buffer, int recvLen, const sockaddr_in &clientAddr)
 {
 	if (recvLen < 1 + sizeof(uint32_t)) // Minimum: message ID + score
@@ -992,7 +998,6 @@ void HandleNewHighscore(const char *buffer, int recvLen, const sockaddr_in &clie
 		BroadcastHighScores();
 	}
 }
-
 void BroadcastHighScores()
 {
 	Packet highscorePacket(REQ_HIGHSCORE);
@@ -1018,4 +1023,105 @@ void BroadcastHighScores()
 		std::lock_guard<std::mutex> lock(lockMutex);
 		messageQueue.push(newMessage);
 	}
+}
+
+void ProcessReplyPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
+{
+	if (recvLen < 1 + sizeof(uint32_t))
+	{
+		return; // Not enough data for player ID
+	}
+
+	uint32_t playerID;
+	memcpy(&playerID, buffer + 1, sizeof(playerID));
+	playerID = ntohl(playerID);
+
+	// Validate player ID
+	if (playerID >= MAX_CONNECTION || !serverData.totalClients[playerID].connected)
+	{
+		return;
+	}
+
+	// Typically this would be a client->server acknowledgement
+	// Could update connection status or resend join info if needed
+	if (debugPrint)
+	{
+		std::cout << "Player " << playerID << " acknowledged join" << std::endl;
+	}
+}
+void ProcessNewPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
+{
+	if (recvLen < 1 + sizeof(uint32_t))
+	{
+		return; // Not enough data for player ID
+	}
+
+	uint32_t newPlayerID;
+	memcpy(&newPlayerID, buffer + 1, sizeof(newPlayerID));
+	newPlayerID = ntohl(newPlayerID);
+
+	// Validate new player exists
+	if (newPlayerID >= MAX_CONNECTION || !serverData.totalClients[newPlayerID].connected)
+	{
+		return;
+	}
+
+	// Broadcast ship data to all other players
+	ClientInfo &newClient = serverData.totalClients[newPlayerID];
+
+	Packet shipPacket(NEW_PLAYER_JOIN);
+	shipPacket << newPlayerID
+		<< newClient.playerShip.xPos << newClient.playerShip.yPos
+		<< newClient.playerShip.vel_x << newClient.playerShip.vel_y;
+
+	MessageData msg;
+	msg.commandID = shipPacket.id;
+	msg.sessionID = -1; // Broadcast to all
+	msg.data = shipPacket;
+
+	std::lock_guard<std::mutex> lock(lockMutex);
+	messageQueue.push(msg);
+}
+void ProcessGameStart(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
+{
+	// Typically initiated by server, but could handle client-ready signals
+	if (serverData.gameRunning)
+	{
+		return; // Game already running
+	}
+
+	serverData.gameRunning = true;
+
+	// Broadcast game start to all clients
+	Packet startPacket(GAME_START);
+
+	MessageData msg;
+	msg.commandID = startPacket.id;
+	msg.sessionID = -1;
+	msg.data = startPacket;
+
+	std::lock_guard<std::mutex> lock(lockMutex);
+	messageQueue.push(msg);
+
+	if (debugPrint)
+	{
+		std::cout << "Game started!" << std::endl;
+	}
+}
+void ProcessPacketError(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
+{
+	if (recvLen < 1 + sizeof(uint32_t))
+	{
+		return; // Not enough data for error code
+	}
+
+	uint32_t errorCode;
+	memcpy(&errorCode, buffer + 1, sizeof(errorCode));
+	errorCode = ntohl(errorCode);
+
+	// Log client-reported errors
+	std::cerr << "Client reported error: " << errorCode << std::endl;
+
+	// Optionally: Resend last packet to that client
+	// ...
 }
