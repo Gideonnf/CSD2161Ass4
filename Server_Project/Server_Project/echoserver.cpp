@@ -70,6 +70,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define MAX_RETRIES 5
 #define PACKET_LOSS_RATE 0.02
 #define SIMULATE_PACKET_LOSS false
+// these scores defines may need to be commented out
 #define REQ_SUBMIT_SCORE ((unsigned char)0x6)
 #define RSP_SUBMIT_SCORE ((unsigned char)0x7)
 #define REQ_GET_SCORES ((unsigned char)0x8)
@@ -91,7 +92,9 @@ void ProcessAsteroidCreated(const sockaddr_in &clientAddr, const char *buffer, i
 void ProcessAsteroidDestroyed(const char *buffer, int recvLen);
 void ProcessShipCollision(const char *buffer, int recvLen);
 
-
+void HandleHighscoreRequest(const sockaddr_in &clientAddr);
+void HandleNewHighscore(const char *buffer, int recvLen, const sockaddr_in &clientAddr);
+void BroadcastHighScores();
 
 static int userCount = 0;
 
@@ -445,9 +448,12 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				ProcessShipCollision(buffer, recvLen);
 				break;
 			case REQ_HIGHSCORE:
+				HandleHighscoreRequest(recvAddr);
 				break;
 			case NEW_HIGHSCORE:
+				HandleNewHighscore(buffer, recvLen, recvAddr);
 				break;
+
 			case GAME_START:
 				break;
 			case PACKET_ERROR:
@@ -822,7 +828,6 @@ void ProcessAsteroidDestroyed(const char *buffer, int recvLen)
 	std::lock_guard<std::mutex> lock(lockMutex);
 	messageQueue.push(newMessage);
 }
-
 void ProcessShipCollision(const char *buffer, int recvLen)
 {
 	if (recvLen < 1 + 2 * sizeof(uint32_t) + sizeof(uint8_t))
@@ -897,4 +902,120 @@ void ProcessShipCollision(const char *buffer, int recvLen)
 
 	std::lock_guard<std::mutex> lock(lockMutex);
 	messageQueue.push(collisionMsg);
+}
+
+void HandleHighscoreRequest(const sockaddr_in &clientAddr)
+{
+	// Create response packet
+	Packet highscorePacket(REQ_HIGHSCORE);
+
+	// Pack number of scores
+	uint16_t numScores = static_cast<uint16_t>(topScores.size());
+	highscorePacket << numScores;
+
+	// Pack each score
+	for (const auto &score : topScores)
+	{
+		highscorePacket << score.playerName << score.score;
+	}
+
+	// Prepare message for queue
+	MessageData newMessage;
+	newMessage.commandID = highscorePacket.id;
+	newMessage.sessionID = -1; // Specific response, not broadcast
+
+	// Create target address (respond to requester)
+	sockaddr_in targetAddr = clientAddr;
+
+	// Queue the message
+	{
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(newMessage);
+	}
+}
+
+void HandleNewHighscore(const char *buffer, int recvLen, const sockaddr_in &clientAddr)
+{
+	if (recvLen < 1 + sizeof(uint32_t)) // Minimum: message ID + score
+	{
+		return; // Not enough data
+	}
+
+	int offset = 1; // Skip message ID
+
+	// Extract player name length
+	uint32_t nameLength;
+	memcpy(&nameLength, buffer + offset, sizeof(nameLength));
+	nameLength = ntohl(nameLength);
+	offset += sizeof(nameLength);
+
+	// Validate remaining length
+	if (recvLen < offset + nameLength + sizeof(uint32_t))
+	{
+		return; // Not enough data for name + score
+	}
+
+	// Extract player name
+	std::string playerName(buffer + offset, nameLength);
+	offset += nameLength;
+
+	// Extract score
+	uint32_t score;
+	memcpy(&score, buffer + offset, sizeof(score));
+	score = ntohl(score);
+
+	// Update high scores
+	bool added = UpdateHighScores(playerName, score);
+
+	// Create response packet
+	Packet responsePacket(NEW_HIGHSCORE);
+	responsePacket << static_cast<uint8_t>(added ? 1 : 0); // Success flag
+
+	// Prepare message for queue
+	MessageData newMessage;
+	newMessage.commandID = responsePacket.id;
+	newMessage.sessionID = -1; // Specific response, not broadcast
+	newMessage.data = responsePacket;
+
+	// Create target address (respond to submitter)
+	sockaddr_in targetAddr = clientAddr;
+
+	// Queue the message
+	{
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(newMessage);
+	}
+
+	// If score was added, broadcast updated high scores to all clients
+	if (added)
+	{
+		BroadcastHighScores();
+	}
+}
+
+void BroadcastHighScores()
+{
+	Packet highscorePacket(REQ_HIGHSCORE);
+
+	// Pack number of scores
+	uint16_t numScores = static_cast<uint16_t>(topScores.size());
+	highscorePacket << numScores;
+
+	// Pack each score
+	for (const auto &score : topScores)
+	{
+		highscorePacket << score.playerName << score.score;
+	}
+
+	// Prepare broadcast message
+	MessageData newMessage;
+	newMessage.commandID = highscorePacket.id;
+	newMessage.sessionID = -1; // Broadcast to all
+	newMessage.data = highscorePacket;
+
+	// Queue the message
+	{
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(newMessage);
+	}
 }
