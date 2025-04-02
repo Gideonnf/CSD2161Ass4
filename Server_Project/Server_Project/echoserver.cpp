@@ -81,6 +81,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 
 // Add these new handler functions:
 void HandleSubmitScore(char *buffer, SOCKET clientSocket);
+void ProcessPlayerDisconnect(const char *buffer, int recvLen);
 void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 void HandleGetScores(SOCKET clientSocket);
 void UDPSendingHandler();
@@ -397,6 +398,212 @@ int main()
 				case SHIP_MOVE:
 					break;
 
+				case PLAYER_DC:
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo &client = serverData.totalClients[i];
+						if (!client.connected) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				case PLAYER_JOIN:
+					// This would be used when the server initiates a player join (not common)
+					// Typically player join is client-initiated and handled in UDPReceiveHandler
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo &client = serverData.totalClients[i];
+						if (!client.connected) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				case BULLET_COLLIDE:
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo &client = serverData.totalClients[i];
+						if (!client.connected) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					}
+
+					break;
+				case BULLET_CREATED:
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo &client = serverData.totalClients[i];
+						if (!client.connected) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				case ASTEROID_CREATED:
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo &client = serverData.totalClients[i];
+						if (!client.connected) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				case ASTEROID_DESTROYED:
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo &client = serverData.totalClients[i];
+						if (!client.connected) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				case SHIP_RESPAWN:
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo &client = serverData.totalClients[i];
+						if (!client.connected) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				case SHIP_COLLIDE:
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo &client = serverData.totalClients[i];
+						if (!client.connected) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				case REQ_HIGHSCORE:
+					sockaddr_in otherAddr;
+					memset(&otherAddr, 0, sizeof(otherAddr));
+					otherAddr.sin_family = AF_INET;
+					otherAddr.sin_port = htons(serverData.totalClients[msg.sessionID].port);
+					inet_pton(AF_INET, serverData.totalClients[msg.sessionID].ip.c_str(), &otherAddr.sin_addr);
+
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&otherAddr, sizeof(otherAddr));
+					break;
+				case NEW_HIGHSCORE:
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo &client = serverData.totalClients[i];
+						if (!client.connected) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				case GAME_START:
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo &client = serverData.totalClients[i];
+						if (!client.connected) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				case PACKET_ERROR:
+					// Send error response to specific client
+					sockaddr_in otherAddr;
+					memset(&otherAddr, 0, sizeof(otherAddr));
+					otherAddr.sin_family = AF_INET;
+					otherAddr.sin_port = htons(serverData.totalClients[msg.sessionID].port);
+					inet_pton(AF_INET, serverData.totalClients[msg.sessionID].ip.c_str(), &otherAddr.sin_addr);
+
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&otherAddr, sizeof(otherAddr));
+					break;
 				}
 				// pop the message im using
 				messages.pop();
@@ -465,6 +672,9 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 			// i only do this one for now
 			switch (msgID)
 			{
+			case PLAYER_DC:
+				ProcessPlayerDisconnect(buffer, recvLen);
+				break;
 			case PLAYER_JOIN:
 				ProcessPlayerJoin(recvAddr, buffer, recvLen);
 				break;
@@ -476,7 +686,7 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 			case NEW_PLAYER_JOIN:
 				ProcessNewPlayerJoin(recvAddr, buffer, recvLen);
 				break;
-			case BULLET_COLLIDE:    
+			case BULLET_COLLIDE:
 				if (recvLen < 9) break; // Ensure buffer contains enough bytes (1 byte msgID + 8 bytes data)
 
 				uint32_t bulletID, targetID;
@@ -599,6 +809,49 @@ void HandleSubmitScore(char *buffer, SOCKET clientSocket)
 
 	// Send response to client
 	send(clientSocket, message, messageSize, 0);
+}
+void ProcessPlayerDisconnect(const char *buffer, int recvLen)
+{
+	if (recvLen < 5) return; // Ensure buffer contains at least 5 bytes (1 for msgID + 4 for playerID)
+
+	uint32_t playerID;
+	std::memcpy(&playerID, buffer + 1, sizeof(uint32_t));
+
+	// Check if player is valid
+	if (playerID >= MAX_CONNECTION || !serverData.totalClients[playerID].connected)
+	{
+		std::cerr << "Invalid disconnect request for player " << playerID << std::endl;
+		return;
+	}
+
+	// Mark player as disconnected
+	serverData.totalClients[playerID].connected = false;
+	std::cout << "Player " << playerID << " has disconnected." << std::endl;
+
+	// Remove player's bullets
+	for (auto it = serverData.activeBullets.begin(); it != serverData.activeBullets.end();)
+	{
+		if (it->second.ownerID == playerID)
+		{
+			it = serverData.activeBullets.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+
+	// Send player disconnect message to all clients
+	Packet playerDCMsg(PLAYER_DC);
+	playerDCMsg << playerID;
+
+	MessageData msg;
+	msg.commandID = playerDCMsg.id;
+	msg.sessionID = -1; // Broadcast to all
+	msg.data = playerDCMsg;
+
+	std::lock_guard<std::mutex> lock(lockMutex);
+	messageQueue.push(msg);
 }
 void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
 {
