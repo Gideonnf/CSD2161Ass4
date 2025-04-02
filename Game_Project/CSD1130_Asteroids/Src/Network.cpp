@@ -114,6 +114,9 @@ int NetworkClient::Init()
 	udpServerAddress.sin_port = htons(std::stoi(udpPortString));
 	inet_pton(udpServerAddress.sin_family, host.c_str(), &udpServerAddress.sin_addr);
 
+	NetworkClient::Instance().gameStartTime = std::chrono::high_resolution_clock::now();
+
+
 	recvThread = std::thread(&NetworkClient::ReceiveMessages, this, udpSocket);
 	recvThread.detach();
 	senderThread = std::thread(&NetworkClient::SendMessages, this, udpSocket);
@@ -215,7 +218,6 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 	
 	// -- TODO -- Basically take this my client's gameStart time -= what frame time the server says we start at
 	// Which means that we can use the currTime to get my curr frame time to help sync
-	time(&gameStartTime);
 
 	while (connected)
 	{
@@ -248,6 +250,7 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 			newPacket.writePos = msgLength;
 			memcpy(newPacket.body, buffer + offset, msgLength);
 
+
 			{
 			std::lock_guard<std::mutex> lock(inMutex);
 			incomingMessages.push(newPacket);
@@ -256,6 +259,13 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 
 		Sleep(SLEEP_TIME);
 	}
+}
+
+uint64_t NetworkClient::GetTimeDiff()
+{
+	auto timestamp = std::chrono::high_resolution_clock::now();
+	uint64_t timeDiff = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp - gameStartTime).count();
+	return timeDiff;
 }
 
 Packet NetworkClient::GetIncomingMessage()

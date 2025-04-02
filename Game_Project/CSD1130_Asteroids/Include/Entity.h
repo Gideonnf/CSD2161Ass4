@@ -124,7 +124,7 @@ struct GameData
 	//static GameObjInst *		spWall;										// Pointer to the "Wall" game object instance
 
 	// the score = number of asteroid destroyed
-	unsigned long		sScore;										// Current score
+	uint32_t		sScore;										// Current score
 
 	bool onValueChange = true;
 

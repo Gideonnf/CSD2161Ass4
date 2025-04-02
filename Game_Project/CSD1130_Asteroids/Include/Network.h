@@ -4,11 +4,12 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <Packet.h>
 #pragma comment(lib, "Ws2_32.lib")
 #endif
-#include <Packet.h>
 
 #include <string>
 #include <thread>
@@ -21,6 +22,7 @@
 #define RETURN_CODE_2       2
 #define RETURN_CODE_3       3
 #define RETURN_CODE_4       4
+
 
 class NetworkClient
 {
@@ -42,6 +44,8 @@ public:
 	Packet GetIncomingMessage();
 	void PushMessage(Packet msg);
 	void CreateMessage(Packet msg, char* buffer);
+	
+	uint64_t GetTimeDiff();
 
 private:
 	SOCKET udpSocket;
@@ -57,7 +61,7 @@ private:
 	std::mutex inMutex;
 	std::mutex outMutex;
 
-	time_t gameStartTime;
+	std::chrono::steady_clock::time_point gameStartTime;
 
 
 	// use mutex to share a queue between game loop and threads

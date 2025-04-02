@@ -412,15 +412,14 @@ void GameStateAsteroidsUpdate(void)
 		}
 
 		{
-			std::stringstream ss;
-			time_t timestamp;
-			time(&timestamp);
-			ss << CMDID::BULLET_CREATED << "Time:" << timestamp << ' ' <<
-				"ID:" << bulletID <<
-				"Pos:" << pos.x << ' ' << pos.y << ' ' <<
-				"Vel:" << vel.x << ' ' << vel.y << ' ' <<
-				"Dir:" << gameData.spShip[gameData.currID]->dirCurr;
-			NetworkClient::Instance().PushMessage(ss.str());
+			Packet pck(CMDID::BULLET_CREATED);
+			pck << NetworkClient::Instance().GetTimeDiff() << bulletID << pos.x << pos.y << vel.x << vel.y << gameData.spShip[gameData.currID]->dirCurr;
+			NetworkClient::Instance().PushMessage(pck);
+			// "Time:" << NetworkClient::Instance().GetTimeDiff() << ' ' <<
+			// "ID:" << bulletID <<
+			// "Pos:" << pos.x << ' ' << pos.y << ' ' <<
+			// "Vel:" << vel.x << ' ' << vel.y << ' ' <<
+			// "Dir:" << gameData.spShip[gameData.currID]->dirCurr;
 		}
 
 		/*if (shipShotgun == 1)
@@ -503,17 +502,17 @@ void GameStateAsteroidsUpdate(void)
 	
 	if (playerInput != 0)
 	{
-		//Packet p(CMDID::SHIP_MOVE);
-
-		//std::stringstream ss;
-		//time_t timestamp;
-		//time(&timestamp);
-		//ss << CMDID::SHIP_MOVE << "Time:" << timestamp << ' ' <<
+		Packet pck(CMDID::SHIP_MOVE);
+		pck << NetworkClient::Instance().GetTimeDiff() << playerInput <<
+			gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
+			gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
+			gameData.spShip[gameData.currID]->dirCurr;
+		NetworkClient::Instance().CreateMessage(pck);
+		//  "Time:" << timestamp << ' ' <<
 		//	"Input:" << playerInput << ' ' <<
 		//	"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
 		//	"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
 		//	"Dir:" << gameData.spShip->dirCurr;
-		//NetworkClient::Instance().CreateMessage(ss.str());
 	}
 
 	// =====================================================================
@@ -825,7 +824,7 @@ void UpdateGO()
 /// </summary>
 void CheckGOCollision()
 {
-	for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
+	for (uint32_t i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
 		GameObjInst* pInst_1 = gameData.sGameObjInstList + i;
 
@@ -836,7 +835,7 @@ void CheckGOCollision()
 		// If its an asteroid, then start checking for collision against ship or bullet
 		if (pInst_1->pObject->type == TYPE_ASTEROID)
 		{
-			for (unsigned long j = 0; j <  GAME_OBJ_INST_NUM_MAX; j++)
+			for (uint32_t j = 0; j <  GAME_OBJ_INST_NUM_MAX; j++)
 			{
 				GameObjInst* pInst_2 = gameData.sGameObjInstList + j;
 				if ((pInst_2->flag & FLAG_ACTIVE) == 0) continue;
@@ -862,14 +861,14 @@ void CheckGOCollision()
 						}
 
 						{
-							std::stringstream ss;
-							time_t timestamp;
-							time(&timestamp);
-							ss << CMDID::BULLET_COLLIDE << "Time:" << timestamp << ' ' <<
-								"BulletID:" << j << ' ' <<
-								"AsteroidID:" << i << ' ' <<
-								"PlayerScore:" << gameData.sScore;
-							NetworkClient::Instance().PushMessage(ss.str());
+							Packet pck(CMDID::BULLET_COLLIDE);
+
+							pck << NetworkClient::Instance().GetTimeDiff() << j << i << gameData.sScore;
+							//  "Time:" << timestamp << ' ' <<
+							//	"BulletID:" << j << ' ' <<
+							//	"AsteroidID:" << i << ' ' <<
+							//	"PlayerScore:" << gameData.sScore;
+							NetworkClient::Instance().PushMessage(pck);
 						}
 
 					}
@@ -886,12 +885,11 @@ void CheckGOCollision()
 						ResetShip();
 
 						{
-							std::stringstream ss;
-							time_t timestamp;
-							time(&timestamp);
-							ss << CMDID::SHIP_COLLIDE << "Time:" << timestamp << ' ' <<
-								"AsteroidID:" << i;
-							NetworkClient::Instance().PushMessage(ss.str());
+							Packet pck(CMDID::SHIP_COLLIDE);
+							pck << NetworkClient::Instance().GetTimeDiff() << i;
+							//	"Time:" << timestamp << ' ' <<
+							//	"AsteroidID:" << i;
+							NetworkClient::Instance().PushMessage(pck);
 						}
 
 					}
@@ -1034,16 +1032,34 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	switch (msg.id)
 	{
 	case REPLY_PLAYER_JOIN:
+	{
 		msg >> clientID;
 		gameData.spShip[clientID]->active = true;
 		gameData.currID = clientID;
 
 		break;
+
+	}
 	case NEW_PLAYER_JOIN:
+	{
+			// get how many player ids to pull
+		size_t num;
+		msg >> num; // get the num of players
+		for (size_t i = 0; i < num; ++i)
+		{
 			msg >> clientID;
+			msg >> (float)gameData.spShip[clientID]->posCurr.x;
+			msg >> (float)gameData.spShip[clientID]->posCurr.y;
+			msg >> (float)gameData.spShip[clientID]->velCurr.x;
+			msg >> (float)gameData.spShip[clientID]->velCurr.x;
+			msg >> gameData.spShip[clientID]->dirCurr;
+
 			gameData.spShip[clientID]->active = true;
+		}
 
 		break;
+
+	}
 		// switch cases
 	case ASTEROID_CREATED: // temporary
 		ProcessNewAsteroid(msg, data);

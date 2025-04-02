@@ -24,12 +24,16 @@ struct ServerData
 {
 	// max is 4
 	ClientInfo totalClients[MAX_CONNECTION];
+	std::unordered_map<std::string, int> playerMap;
 
 	// store a vector of all asteroids or smth
-
+	std::vector<Asteroid> asteroids;
 	// power ups
 
 	// idk what else u want
+	bool gameRunning;
+	std::unordered_map<int, Bullet> activeBullets;
+	int nextBulletID = 0;
 };
 
 #endif
