@@ -503,13 +503,13 @@ void GameStateAsteroidsUpdate(void)
 	if (playerInput != 0)
 	{
 		Packet pck(CMDID::SHIP_MOVE);
-		pck << NetworkClient::Instance().GetTimeDiff() << playerInput <<
+		pck << NetworkClient::Instance().GetTimeDiff() << gameData.currID <<
 			gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
 			gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
 			gameData.spShip[gameData.currID]->dirCurr;
 		NetworkClient::Instance().CreateMessage(pck);
 		//  "Time:" << timestamp << ' ' <<
-		//	"Input:" << playerInput << ' ' <<
+		//	"ShipNum:" << gameData.currID << ' ' <<
 		//	"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
 		//	"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
 		//	"Dir:" << gameData.spShip->dirCurr;
@@ -1042,7 +1042,7 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	}
 	case NEW_PLAYER_JOIN:
 	{
-			// get how many player ids to pull
+		// get how many player ids to pull
 		size_t num = msg.writePos / sizeof(int32_t);
 		for (size_t i = 0; i < num; ++i)
 		{
@@ -1056,6 +1056,56 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		// switch cases
 	case ASTEROID_CREATED: // temporary
 		ProcessNewAsteroid(msg, data);
+		break;
+	case BULLET_CREATED:
+	{
+		// "Time:" << NetworkClient::Instance().GetTimeDiff() << ' ' <<
+		// "ID:" << bulletID <<
+		uint64_t timeDiff;
+		uint32_t bulletID;
+		msg >> timeDiff >> bulletID;
+
+		GameObjInst* pInst = gameData.sGameObjInstList + bulletID;
+		pInst->pObject = gameData.sGameObjList + TYPE_BULLET;
+		pInst->flag = FLAG_ACTIVE;
+		AEVec2 scale;
+		AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
+		pInst->scale = scale;
+
+		// "Pos:" << pos.x << ' ' << pos.y << ' ' <<
+		// "Vel:" << vel.x << ' ' << vel.y << ' ' <<
+		// "Dir:" << gameData.spShip[gameData.currID]->dirCurr;
+		msg >> pInst->posCurr.x >> pInst->posCurr.y;
+		pInst->posPrev = pInst->posCurr;
+		msg >> pInst->velCurr.x >> pInst->velCurr.y;
+		msg >> pInst->dirCurr;
+
+		// Calculate timeDiff
+	}
+		break;
+	case SHIP_MOVE:
+		//  "Time:" << timestamp << ' ' <<
+		//	"ShipNum:" << gameData.currID << ' ' <<
+		//	"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
+		//	"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
+		//	"Dir:" << gameData.spShip->dirCurr;
+	{
+		uint64_t timeDiff;
+		msg >> timeDiff >> clientID;
+		msg >> gameData.spShip[clientID]->posCurr.x >> gameData.spShip[clientID]->posCurr.y >>
+			gameData.spShip[clientID]->velCurr.x >> gameData.spShip[clientID]->velCurr.y >>
+			gameData.spShip[clientID]->dirCurr;
+	}
+		break;
+	case BULLET_COLLIDE:
+		//  "Time:" << timestamp << ' ' <<
+		//	"BulletID:" << j << ' ' <<
+		//	"AsteroidID:" << i << ' ' <<
+		//	"PlayerScore:" << gameData.sScore;
+		break;
+	case SHIP_COLLIDE:
+		//	"Time:" << timestamp << ' ' <<
+		//	"AsteroidID:" << i;
 		break;
 	}
 }
