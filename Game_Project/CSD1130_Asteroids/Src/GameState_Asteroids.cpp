@@ -748,10 +748,10 @@ GameObjInst* bulletObjInstCreate(AEVec2* pPos, AEVec2* pVel, float dir, uint32_t
 	GameObjInst* pInst;
 	if (id >= BULLET_ID_MAX)
 	{
-		pInst = gameData.sGameObjInstList + (gameData.currID * BULLET_ID_MAX) + gameData.bulletIDCount;
+		pInst = gameData.sGameObjInstList + 4 + (gameData.currID * BULLET_ID_MAX) + gameData.bulletIDCount;
 		if (++gameData.bulletIDCount >= BULLET_ID_MAX)
 		{
-			gameData.bulletIDCount = 1;
+			gameData.bulletIDCount = 0;
 		}
 	}
 	else // valid ID

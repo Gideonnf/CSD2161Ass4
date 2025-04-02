@@ -122,7 +122,7 @@ struct GameData
 	// pointer to the ship object
 	GameObjInst* spShip[4];										// Pointer to the "Ship" game object instance
 
-	uint32_t bulletIDCount{1};
+	uint32_t bulletIDCount{0};
 
 	// pointer to the wall object
 	//static GameObjInst *		spWall;										// Pointer to the "Wall" game object instance
