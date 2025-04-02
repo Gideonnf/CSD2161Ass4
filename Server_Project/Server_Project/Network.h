@@ -26,10 +26,12 @@ struct ServerData
 	ClientInfo totalClients[MAX_CONNECTION];
 
 	// store a vector of all asteroids or smth
-
+	std::vector<Asteroid> asteroids;
 	// power ups
 
 	// idk what else u want
+	std::unordered_map<int, Bullet> activeBullets;
+	int nextBulletID = 0;
 };
 
 #endif

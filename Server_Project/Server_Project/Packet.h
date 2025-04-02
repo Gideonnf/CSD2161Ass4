@@ -10,10 +10,11 @@ enum CMDID : unsigned char {
 	PLAYER_JOIN ,
 	REPLY_PLAYER_JOIN,
 	NEW_PLAYER_JOIN,
-	BULLET_COLLIDE,
-	BULLET_CREATED ,
+	BULLET_COLLIDE, // when bullet collides it gets destroyed, set Bullet active to false
+	BULLET_CREATED , // bullet fired
 	ASTEROID_CREATED ,
-	ASTEROID_DESTROYED ,
+	ASTEROID_DESTROYED,
+	SHIP_RESPAWN,
 	SHIP_MOVE,
 	SHIP_COLLIDE ,
 	REQ_HIGHSCORE ,
