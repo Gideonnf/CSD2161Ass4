@@ -799,9 +799,8 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 }
 void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int recvLen)
 {
-	std::string ip = inet_ntoa(clientAddr.sin_addr);
+	//std::string ip = inet_ntoa(clientAddr.sin_addr);
 	// get the id of the ship thats moving
-	ClientInfo& client = serverData.totalClients[serverData.playerMap[ip]];
 	int offset = 1;
 
 	// get rid of header data
@@ -817,7 +816,10 @@ void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int 
 	int sessionID;
 	int playerInput;
 	uint64_t timeDiff;
+
 	shipMovement >> sessionID;
+	ClientInfo& client = serverData.totalClients[sessionID];
+
 	shipMovement >> timeDiff;
 	shipMovement >> playerInput;
 	shipMovement >> client.playerShip.xPos;

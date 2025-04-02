@@ -1140,6 +1140,7 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	{
 
 		msg >> clientID;
+		if (clientID == gameData.currID) break;
 		uint64_t timeDiff;
 		int playerInput;
 		msg >> timeDiff >> playerInput;
