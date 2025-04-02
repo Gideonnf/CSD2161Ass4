@@ -359,6 +359,60 @@ int main()
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
 					offset += msg.data.writePos;
 					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
+
+					// reset the message
+					std::memset(buffer, 0, sizeof(buffer));
+					offset = 0;
+
+					std::vector<int32_t> playerIDs;
+					// use new player join packet
+
+					// Send any existing connected player to the new client as well
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						if (i == msg.sessionID) continue; // skip the new player's id
+
+						if (!serverData.totalClients[i].connected) continue; // skip unconnected slots
+
+						playerIDs.push_back(i);
+						//newPlayer << i; // pack the client's ID into it
+					}
+
+					if (!playerIDs.empty())
+					{
+						Packet newPlayer(NEW_PLAYER_JOIN);
+
+						for (int i = 0; i < playerIDs.size(); ++i)
+						{
+							// add all the player ids
+							newPlayer << playerIDs[i];
+						}
+
+
+						char msgID = newPlayer.id; // either msg.commandID or msg.data.id
+
+						//std::string messageBody = msg.data.substr(1); // get rid of the 1st char as it's the commandID
+						// ID of the message
+						buffer[0] = msgID;
+						offset++;
+
+						// any other header stuff here
+
+						// add the length of the message
+						uint32_t messageLength = static_cast<uint32_t>(msg.data.writePos); // writePos represents how much was written
+						messageLength = htonl(messageLength);
+						std::memcpy(buffer + offset, &messageLength, sizeof(messageLength));
+						offset += sizeof(messageLength);
+
+						// this msg contains a lsit of every connected client's IDs to the newest joined player
+						// body of the message
+						std::memcpy(buffer + offset, newPlayer.body, newPlayer.writePos);
+						offset += newPlayer.writePos;
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
+
+					}
+
+
 					break;
 				}
 				case NEW_PLAYER_JOIN:
