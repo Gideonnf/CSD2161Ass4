@@ -507,7 +507,7 @@ void GameStateAsteroidsUpdate(void)
 			gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
 			gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
 			gameData.spShip[gameData.currID]->dirCurr;
-		NetworkClient::Instance().CreateMessage(pck);
+		NetworkClient::Instance().PushMessage(pck);
 		//  "Time:" << timestamp << ' ' <<
 		//	"Input:" << playerInput << ' ' <<
 		//	"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
