@@ -1,1 +1,3 @@
-﻿
+﻿  echoserver.cpp
+C:\Users\chick\RTIS\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(360,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+  Server_Project.vcxproj -> C:\Users\chick\RTIS\CSD2161Ass4\Server_Project\x64\Debug\Server_Project.exe

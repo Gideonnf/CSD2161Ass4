@@ -19,8 +19,6 @@
 #define SLEEP_TIME 500
 
 
-uint32_t seqNum = 0;
-
 
 int NetworkClient::Init()
 {
@@ -122,7 +120,7 @@ int NetworkClient::Init()
 	senderThread.detach();
 
 	Packet newPlayer(PLAYER_JOIN);
-	CreateMessage(newPlayer);
+	PushMessage(newPlayer);
 	//{
 	//	std::lock_guard<std::mutex> lock(outMutex);
 	//	outgoingMessages.push(newPlayer.ToString());
@@ -170,6 +168,7 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 	while (connected)
 	{
 		Packet outMsg;
+		
 		{
 			std::lock_guard<std::mutex> lock(outMutex);
 			if (!outgoingMessages.empty())
@@ -185,25 +184,8 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 			// send it?? process it?? idk
 			//Read command ID and then construct the message 
 			char buffer[MAX_STR_LEN];
-
-			unsigned int headerOffset = 0;
-
-			uint8_t commandID = static_cast<uint8_t>(outMsg.id);
-			memcpy(&buffer[0], &commandID, sizeof(commandID));
-			headerOffset += 1;
-
-			// any other header stuff do here
 			
-			// get the file length/message length based on writePos
-			uint32_t fileLength = static_cast<uint32_t>(outMsg.writePos);
-			fileLength = htonl(fileLength);
-			memcpy(buffer + headerOffset, &fileLength, sizeof(fileLength));
-			headerOffset += sizeof(fileLength);
-
-
-			// copy the body into the msg
-			memcpy(buffer + headerOffset, outMsg.body, outMsg.writePos);
-			headerOffset += outMsg.writePos;
+			CreateMessage(outMsg, buffer);
 
 
 			sockaddr_in udpServerAddress = {};
@@ -211,7 +193,7 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 			udpServerAddress.sin_port = htons(9999);
 			inet_pton(AF_INET, serverIP.c_str(), &udpServerAddress.sin_addr);
 
-			int sentBytes = sendto(clientSocket, buffer, headerOffset, 0,
+			int sentBytes = sendto(clientSocket, buffer, outMsg.headerOffset, 0,
 				reinterpret_cast<sockaddr*>(&udpServerAddress), sizeof(udpServerAddress));
 
 			if (sentBytes == SOCKET_ERROR)
@@ -246,7 +228,7 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 		{
 			int offset = 0;
 			//buffer[receivedBytes] = '\0';
-			char msgID = buffer[0];
+			uint8_t msgID = buffer[0];
 			offset++;
 			
 			// if theres any other header stuff u need to take out cna do it here
@@ -288,10 +270,36 @@ Packet NetworkClient::GetIncomingMessage()
 	return outMsg;
 }
 
-void NetworkClient::CreateMessage(Packet msg)
+void NetworkClient::PushMessage(Packet msg)
 {
 	{
 		std::lock_guard<std::mutex> lock(outMutex);
 		outgoingMessages.push(msg);
 	}
+}
+
+void NetworkClient::CreateMessage(Packet msg, char* buffer)
+{
+	
+
+	uint8_t commandID = static_cast<uint8_t>(msg.id);
+	memcpy(&buffer[0], &commandID, sizeof(commandID));
+	msg.headerOffset += 1;
+
+	uint32_t sessID = static_cast<uint32_t>(msg.sessionID);
+	memcpy(buffer + msg.headerOffset, &sessID, sizeof(sessID));
+	msg.headerOffset += sizeof(sessID);
+
+	// any other header stuff do here
+
+	// get the file length/message length based on writePos
+	uint32_t fileLength = static_cast<uint32_t>(msg.writePos);
+	fileLength = htonl(fileLength);
+	memcpy(buffer + msg.headerOffset, &fileLength, sizeof(fileLength));
+	msg.headerOffset += sizeof(fileLength);
+
+
+	// copy the body into the msg
+	memcpy(buffer + msg.headerOffset, msg.body, msg.writePos);
+	msg.headerOffset += msg.writePos;
 }

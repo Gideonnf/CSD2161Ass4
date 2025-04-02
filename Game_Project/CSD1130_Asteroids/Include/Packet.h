@@ -26,6 +26,8 @@ struct Packet
 {
 	char body[MAX_BODY_LEN];
 	CMDID id;
+	unsigned int headerOffset{};
+	int sessionID{};
 	size_t writePos = 0;
 	size_t readPos = 0;
 
@@ -85,18 +87,13 @@ struct Packet
 };
 
 
-struct MessageData
-{
-	// header stuff
-	// idk?
-	CMDID commandID;
-	int sessionID{};
-	int seqNum{};
-	int fileLength{};
-	int headerOffset{};
-	int dataLength{};
-	Packet data{};
-};
+//struct MessageData
+//{
+//	// header stuff
+//	// idk?
+//	int sessionID{};
+//	Packet data{};
+//};
 
 
 

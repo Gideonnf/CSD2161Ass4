@@ -40,7 +40,8 @@ public:
 	void SendMessages(SOCKET clientSocket);
 	void ReceiveMessages(SOCKET udpSocket);
 	Packet GetIncomingMessage();
-	void CreateMessage(Packet msg);
+	void PushMessage(Packet msg);
+	void CreateMessage(Packet msg, char* buffer);
 
 private:
 	SOCKET udpSocket;

@@ -420,7 +420,7 @@ void GameStateAsteroidsUpdate(void)
 				"Pos:" << pos.x << ' ' << pos.y << ' ' <<
 				"Vel:" << vel.x << ' ' << vel.y << ' ' <<
 				"Dir:" << gameData.spShip[gameData.currID]->dirCurr;
-			NetworkClient::Instance().CreateMessage(ss.str());
+			NetworkClient::Instance().PushMessage(ss.str());
 		}
 
 		/*if (shipShotgun == 1)
@@ -869,7 +869,7 @@ void CheckGOCollision()
 								"BulletID:" << j << ' ' <<
 								"AsteroidID:" << i << ' ' <<
 								"PlayerScore:" << gameData.sScore;
-							NetworkClient::Instance().CreateMessage(ss.str());
+							NetworkClient::Instance().PushMessage(ss.str());
 						}
 
 					}
@@ -891,7 +891,7 @@ void CheckGOCollision()
 							time(&timestamp);
 							ss << CMDID::SHIP_COLLIDE << "Time:" << timestamp << ' ' <<
 								"AsteroidID:" << i;
-							NetworkClient::Instance().CreateMessage(ss.str());
+							NetworkClient::Instance().PushMessage(ss.str());
 						}
 
 					}
