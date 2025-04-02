@@ -60,6 +60,8 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define RSP_DOWNLOAD       ((unsigned char)0x3)
 #define REQ_LISTFILES  ((unsigned char)0x4)
 #define RSP_LISTFILES  ((unsigned char)0x5)
+
+
 #define CMD_TEST       ((unsigned char)0x20)
 #define DOWNLOAD_ERROR     ((unsigned char)0x30)
 #define WINDOW_SIZE 5
@@ -74,86 +76,16 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define RSP_GET_SCORES ((unsigned char)0x9)
 #define SLEEP_TIME 500
 
+
+
 // Add these new handler functions:
-
-void HandleSubmitScore(char *buffer, SOCKET clientSocket)
-{
-	int offset = 1;  // Skip command ID
-
-	// Get player name length
-	uint32_t nameLength;
-	memcpy(&nameLength, &buffer[offset], 4);
-	nameLength = ntohl(nameLength);
-	offset += 4;
-
-	// Extract the player name
-	std::string playerName(buffer + offset, nameLength);
-	offset += nameLength;
-
-	// Get the score
-	uint32_t score;
-	memcpy(&score, &buffer[offset], 4);
-	score = ntohl(score);
-
-	std::cout << "Received score from " << playerName << ": " << score << std::endl;
-
-	// Update high scores
-	bool addedToHighScores = UpdateHighScores(playerName, score);
-
-	// Send response
-	char message[MAX_STR_LEN];
-	unsigned int messageSize = 0;
-
-	message[0] = RSP_SUBMIT_SCORE;
-	messageSize += 1;
-
-	// Add success flag
-	uint8_t success = addedToHighScores ? 1 : 0;
-	memcpy(&message[messageSize], &success, 1);
-	messageSize += 1;
-
-	// Send response to client
-	send(clientSocket, message, messageSize, 0);
-}
+void HandleSubmitScore(char *buffer, SOCKET clientSocket);
 void ProcessPlayerJoin(const sockaddr_in& clientAddr, const char* buffer, int recvLen);
-void HandleGetScores(SOCKET clientSocket)
-{
-	char message[MAX_STR_LEN];
-	unsigned int messageSize = 0;
-
-	message[0] = RSP_GET_SCORES;
-	messageSize += 1;
-
-	// Get number of scores
-	uint16_t numScores = static_cast<uint16_t>(topScores.size());
-	uint16_t numScoresNetworkOrder = htons(numScores);
-	memcpy(&message[messageSize], &numScoresNetworkOrder, sizeof(numScoresNetworkOrder));
-	messageSize += sizeof(numScoresNetworkOrder);
-
-	// Pack each score into the message
-	for (const auto &score : topScores)
-	{
-		// Add player name length
-		uint32_t nameLength = static_cast<uint32_t>(score.playerName.length());
-		uint32_t nameLengthNetworkOrder = htonl(nameLength);
-		memcpy(&message[messageSize], &nameLengthNetworkOrder, sizeof(nameLengthNetworkOrder));
-		messageSize += sizeof(nameLengthNetworkOrder);
-
-		// Add player name
-		memcpy(&message[messageSize], score.playerName.c_str(), nameLength);
-		messageSize += nameLength;
-
-		// Add score
-		uint32_t scoreNetworkOrder = htonl(score.score);
-		memcpy(&message[messageSize], &scoreNetworkOrder, sizeof(scoreNetworkOrder));
-		messageSize += sizeof(scoreNetworkOrder);
-	}
-
-	// Send high scores to client
-	send(clientSocket, message, messageSize, 0);
-}
+void HandleGetScores(SOCKET clientSocket);
 void UDPSendingHandler();
 void UDPReceiveHandler(SOCKET udpListenerSocket);
+
+void ProcessBulletFired(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 
 static int userCount = 0;
 
@@ -469,11 +401,109 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				break;
 			case SHIP_MOVE:
 				break;
+
+			case REPLY_PLAYER_JOIN:
+				break;
+			case NEW_PLAYER_JOIN:
+				break;
+			case BULLET_COLLIDE:
+				break;
+			case BULLET_CREATED:
+				break;
+			case ASTEROID_CREATED:
+				break;
+			case ASTEROID_DESTROYED:
+				break;
+			case SHIP_COLLIDE:
+				break;
+			case REQ_HIGHSCORE:
+				break;
+			case NEW_HIGHSCORE:
+				break;
+			case GAME_START:
+				break;
+			case PACKET_ERROR:		
+				break;
 			}
 		}
 	}
 }
 
+void HandleGetScores(SOCKET clientSocket)
+{
+	char message[MAX_STR_LEN];
+	unsigned int messageSize = 0;
+
+	message[0] = RSP_GET_SCORES;
+	messageSize += 1;
+
+	// Get number of scores
+	uint16_t numScores = static_cast<uint16_t>(topScores.size());
+	uint16_t numScoresNetworkOrder = htons(numScores);
+	memcpy(&message[messageSize], &numScoresNetworkOrder, sizeof(numScoresNetworkOrder));
+	messageSize += sizeof(numScoresNetworkOrder);
+
+	// Pack each score into the message
+	for (const auto &score : topScores)
+	{
+		// Add player name length
+		uint32_t nameLength = static_cast<uint32_t>(score.playerName.length());
+		uint32_t nameLengthNetworkOrder = htonl(nameLength);
+		memcpy(&message[messageSize], &nameLengthNetworkOrder, sizeof(nameLengthNetworkOrder));
+		messageSize += sizeof(nameLengthNetworkOrder);
+
+		// Add player name
+		memcpy(&message[messageSize], score.playerName.c_str(), nameLength);
+		messageSize += nameLength;
+
+		// Add score
+		uint32_t scoreNetworkOrder = htonl(score.score);
+		memcpy(&message[messageSize], &scoreNetworkOrder, sizeof(scoreNetworkOrder));
+		messageSize += sizeof(scoreNetworkOrder);
+	}
+
+	// Send high scores to client
+	send(clientSocket, message, messageSize, 0);
+}
+void HandleSubmitScore(char *buffer, SOCKET clientSocket)
+{
+	int offset = 1;  // Skip command ID
+
+	// Get player name length
+	uint32_t nameLength;
+	memcpy(&nameLength, &buffer[offset], 4);
+	nameLength = ntohl(nameLength);
+	offset += 4;
+
+	// Extract the player name
+	std::string playerName(buffer + offset, nameLength);
+	offset += nameLength;
+
+	// Get the score
+	uint32_t score;
+	memcpy(&score, &buffer[offset], 4);
+	score = ntohl(score);
+
+	std::cout << "Received score from " << playerName << ": " << score << std::endl;
+
+	// Update high scores
+	bool addedToHighScores = UpdateHighScores(playerName, score);
+
+	// Send response
+	char message[MAX_STR_LEN];
+	unsigned int messageSize = 0;
+
+	message[0] = RSP_SUBMIT_SCORE;
+	messageSize += 1;
+
+	// Add success flag
+	uint8_t success = addedToHighScores ? 1 : 0;
+	memcpy(&message[messageSize], &success, 1);
+	messageSize += 1;
+
+	// Send response to client
+	send(clientSocket, message, messageSize, 0);
+}
 void ProcessPlayerJoin( const sockaddr_in& clientAddr, const char* buffer,  int recvLen)
 {
 	int32_t availID = -1;
@@ -529,4 +559,54 @@ void ProcessPlayerJoin( const sockaddr_in& clientAddr, const char* buffer,  int 
 		std::lock_guard<std::mutex> lock(lockMutex);
 		messageQueue.push(newMessage);
 	}
+}
+void ProcessBulletFired(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
+{
+	// Extract the player ID
+	int offset = 1; // Skip message ID
+	uint32_t playerID;
+	memcpy(&playerID, buffer + offset, sizeof(playerID));
+	playerID = ntohl(playerID);
+	offset += sizeof(playerID);
+
+	// Extract bullet position and velocity
+	float xPos, yPos, velX, velY;
+	memcpy(&xPos, buffer + offset, sizeof(float));
+	offset += sizeof(float);
+	memcpy(&yPos, buffer + offset, sizeof(float));
+	offset += sizeof(float);
+	memcpy(&velX, buffer + offset, sizeof(float));
+	offset += sizeof(float);
+	memcpy(&velY, buffer + offset, sizeof(float));
+	offset += sizeof(float);
+
+	// Create a new bullet
+	Bullet newBullet;
+	newBullet.ownerID = playerID;
+	newBullet.xPos = xPos;
+	newBullet.yPos = yPos;
+	newBullet.vel_x = velX;
+	newBullet.vel_y = velY;
+	newBullet.vel_server_x = velX; // Server can adjust if needed for physics
+	newBullet.vel_server_y = velY;
+	newBullet.active = true;
+
+	// Add to server's list of active bullets
+	int bulletID = serverData.nextBulletID++;
+	serverData.activeBullets[bulletID] = newBullet;
+
+	// Create a message to broadcast to all clients that a bullet was fired
+	Packet bulletPacket(BULLET_CREATED);
+	bulletPacket << bulletID;
+	bulletPacket << playerID;
+	bulletPacket << xPos << yPos << velX << velY;
+
+	// Queue the message
+	MessageData newMessage;
+	newMessage.commandID = bulletPacket.id;
+	newMessage.sessionID = -1; // Broadcast to all
+	newMessage.data = bulletPacket;
+
+	std::lock_guard<std::mutex> lock(lockMutex);
+	messageQueue.push(newMessage);
 }
