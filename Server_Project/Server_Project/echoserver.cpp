@@ -75,7 +75,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define RSP_SUBMIT_SCORE ((unsigned char)0x7)
 #define REQ_GET_SCORES ((unsigned char)0x8)
 #define RSP_GET_SCORES ((unsigned char)0x9)
-#define SLEEP_TIME 500
+#define SLEEP_TIME 0
 
 #define ASTEROID_SCORE 100;
 
@@ -256,6 +256,8 @@ int main()
 		// every 0.01 maybe, Clear the msg queue by sending the message to every client
 		if (currTime - lastSendTime >= interval)
 		{
+
+
 			// set to the curr time it is resolving all messages
 			lastSendTime = currTime;
 			std::queue<MessageData> messages;
@@ -438,7 +440,7 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 			size_t errCode = WSAGetLastError();
 			if (errCode == WSAEWOULDBLOCK)
 			{
-				Sleep(200);
+				Sleep(50);
 				continue;
 			}
 		}

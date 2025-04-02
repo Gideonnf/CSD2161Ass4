@@ -16,7 +16,7 @@
 //#define WINSOCK_VERSION     2
 
 
-#define SLEEP_TIME 500
+#define SLEEP_TIME 50
 
 
 uint32_t seqNum = 0;

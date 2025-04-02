@@ -18,6 +18,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include "main.h"
 #include "ProcessReceive.h"
 #include <sstream>
+#include <iostream>
 /******************************************************************************/
 /*!
 	Define constant variables that we use in our game
@@ -404,7 +405,7 @@ void GameStateAsteroidsUpdate(void)
 			vel.x = BULLET_SPEED * cosf(gameData.spShip[gameData.currID]->dirCurr);
 			vel.y = BULLET_SPEED * sinf(gameData.spShip[gameData.currID]->dirCurr);
 			AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-			GameObjInst* bulletObj = gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
+			GameObjInst* bulletObj = bulletObjInstCreate(&pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
 			unsigned int bulletID{};
 
 			for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
@@ -461,20 +462,6 @@ void GameStateAsteroidsUpdate(void)
 		// Update the GOs (i.e movement, etc)
 		UpdateGO();
 
-		if (playerInput != 0)
-		{
-			Packet pck(CMDID::SHIP_MOVE);
-			pck << NetworkClient::Instance().GetTimeDiff() << playerInput <<
-				gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
-				gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
-				gameData.spShip[gameData.currID]->dirCurr;
-			NetworkClient::Instance().CreateMessage(pck);
-			//  "Time:" << timestamp << ' ' <<
-			//	"Input:" << playerInput << ' ' <<
-			//	"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
-			//	"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
-			//	"Dir:" << gameData.spShip->dirCurr;
-		}
 
 		// =====================================================================
 		// calculate the matrix for all objects
@@ -498,6 +485,31 @@ void GameStateAsteroidsUpdate(void)
 			// Concatenate the 3 matrix in the correct order in the object instance's "transform" matrix
 			AEMtx33Concat(&pInst->transform, &rot, &scale);
 			AEMtx33Concat(&pInst->transform, &trans, &pInst->transform);
+		}
+
+
+
+		if (playerInput != 0)
+		{
+			Packet pck(CMDID::SHIP_MOVE);
+			pck << NetworkClient::Instance().GetTimeDiff() << playerInput <<
+				gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
+				gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
+				gameData.spShip[gameData.currID]->dirCurr;
+			NetworkClient::Instance().CreateMessage(pck);
+
+
+			std::cout << "Ship " << gameData.currID << "\n"
+				<< "Curr Pos : " << gameData.spShip[gameData.currID]->posCurr.x << ", " << gameData.spShip[gameData.currID]->posCurr.y << "\n"
+				<< "Curr Vel : " << gameData.spShip[gameData.currID]->velCurr.x << ", " << gameData.spShip[gameData.currID]->velCurr.y << "\n";
+
+
+
+			//  "Time:" << timestamp << ' ' <<
+			//	"Input:" << playerInput << ' ' <<
+			//	"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
+			//	"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
+			//	"Dir:" << gameData.spShip->dirCurr;
 		}
 
 		accumulatedTime -= FIXED_DELTA_TIME;
@@ -736,6 +748,8 @@ GameObjInst* bulletObjInstCreate(AEVec2* pPos, AEVec2* pVel, float dir, uint32_t
 	pInst->posPrev = pInst->posCurr;
 	pInst->velCurr = *pVel;
 	pInst->dirCurr = dir;
+
+	return pInst;
 }
 
 /******************************************************************************/
@@ -1035,7 +1049,7 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	case NEW_PLAYER_JOIN:
 	{
 		// get how many player ids to pull
-		size_t num;
+		int num;
 		msg >> num; // get the num of players
 		for (size_t i = 0; i < num; ++i)
 		{
