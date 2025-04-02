@@ -1032,16 +1032,27 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	switch (msg.id)
 	{
 	case REPLY_PLAYER_JOIN:
+	{
 		msg >> clientID;
 		gameData.spShip[clientID]->active = true;
 		gameData.currID = clientID;
 
 		break;
+
+	}
 	case NEW_PLAYER_JOIN:
+	{
+			// get how many player ids to pull
+		size_t num = msg.writePos / sizeof(int32_t);
+		for (size_t i = 0; i < num; ++i)
+		{
 			msg >> clientID;
 			gameData.spShip[clientID]->active = true;
+		}
 
 		break;
+
+	}
 		// switch cases
 	case ASTEROID_CREATED: // temporary
 		ProcessNewAsteroid(msg, data);
