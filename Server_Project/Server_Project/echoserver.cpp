@@ -87,6 +87,11 @@ void UDPReceiveHandler(SOCKET udpListenerSocket);
 
 void ProcessBulletFired(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 void ProcessBulletCollision(uint32_t bulletID, uint32_t targetID, uint8_t targetType);
+void ProcessAsteroidCreated(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
+void ProcessAsteroidDestroyed(const char *buffer, int recvLen);
+void ProcessShipCollision(const char *buffer, int recvLen);
+
+
 
 static int userCount = 0;
 
@@ -423,8 +428,10 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				ProcessBulletFired(recvAddr, buffer, recvLen);
 				break;
 			case ASTEROID_CREATED:
+				ProcessAsteroidCreated(recvAddr, buffer, recvLen);
 				break;
 			case ASTEROID_DESTROYED:
+				ProcessAsteroidDestroyed(buffer, recvLen);
 				break;
 			case SHIP_RESPAWN:
 				if (recvLen < 5) break; // Ensure buffer has enough data
@@ -435,6 +442,7 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				RespawnShip(playerID);
 				break;
 			case SHIP_COLLIDE:
+				ProcessShipCollision(buffer, recvLen);
 				break;
 			case REQ_HIGHSCORE:
 				break;
@@ -733,4 +741,160 @@ void RespawnShip(uint32_t playerID)
 
 	std::lock_guard<std::mutex> lock(lockMutex);
 	messageQueue.push(respawnMsg);
+}
+void ProcessAsteroidCreated(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
+{
+	if (recvLen < 1 + sizeof(uint32_t) + 4 * sizeof(float))
+	{
+		return; // Not enough data
+	}
+
+	int offset = 1; // Skip message ID
+
+	// Extract asteroid data
+	uint32_t asteroidID;
+	float xPos, yPos, velX, velY;
+
+	memcpy(&asteroidID, buffer + offset, sizeof(asteroidID));
+	offset += sizeof(asteroidID);
+	memcpy(&xPos, buffer + offset, sizeof(float));
+	offset += sizeof(float);
+	memcpy(&yPos, buffer + offset, sizeof(float));
+	offset += sizeof(float);
+	memcpy(&velX, buffer + offset, sizeof(float));
+	offset += sizeof(float);
+	memcpy(&velY, buffer + offset, sizeof(float));
+	offset += sizeof(float);
+
+	// Create new asteroid
+	Asteroid newAsteroid;
+	newAsteroid.ID = asteroidID;
+	newAsteroid.xPos = xPos;
+	newAsteroid.yPos = yPos;
+	newAsteroid.vel_x = velX;
+	newAsteroid.vel_y = velY;
+	newAsteroid.active = true;
+
+	// Add to server's asteroid list
+	serverData.asteroids.push_back(newAsteroid);
+
+	// Broadcast asteroid creation to all clients
+	Packet asteroidPacket(ASTEROID_CREATED);
+	asteroidPacket << asteroidID << xPos << yPos << velX << velY;
+
+	MessageData newMessage;
+	newMessage.commandID = asteroidPacket.id;
+	newMessage.sessionID = -1; // Broadcast to all
+	newMessage.data = asteroidPacket;
+
+	std::lock_guard<std::mutex> lock(lockMutex);
+	messageQueue.push(newMessage);
+}
+void ProcessAsteroidDestroyed(const char *buffer, int recvLen)
+{
+	if (recvLen < 1 + sizeof(uint32_t))
+	{
+		return; // Not enough data
+	}
+
+	uint32_t asteroidID;
+	memcpy(&asteroidID, buffer + 1, sizeof(asteroidID));
+	asteroidID = ntohl(asteroidID);
+
+	// Find and mark asteroid as inactive
+	auto it = std::find_if(serverData.asteroids.begin(), serverData.asteroids.end(),
+		[asteroidID](const Asteroid &a) { return a.ID == asteroidID; });
+
+	if (it != serverData.asteroids.end())
+	{
+		it->active = false;
+	}
+
+	// Broadcast destruction to all clients
+	Packet asteroidPacket(ASTEROID_DESTROYED);
+	asteroidPacket << asteroidID;
+
+	MessageData newMessage;
+	newMessage.commandID = asteroidPacket.id;
+	newMessage.sessionID = -1; // Broadcast to all
+	newMessage.data = asteroidPacket;
+
+	std::lock_guard<std::mutex> lock(lockMutex);
+	messageQueue.push(newMessage);
+}
+
+void ProcessShipCollision(const char *buffer, int recvLen)
+{
+	if (recvLen < 1 + 2 * sizeof(uint32_t) + sizeof(uint8_t))
+	{
+		return; // Not enough data
+	}
+
+	int offset = 1; // Skip message ID
+
+	// Extract ship ID and target info
+	uint32_t shipID;
+	uint32_t targetID;
+	uint8_t targetType;
+
+	memcpy(&shipID, buffer + offset, sizeof(shipID));
+	shipID = ntohl(shipID);
+	offset += sizeof(shipID);
+
+	memcpy(&targetID, buffer + offset, sizeof(targetID));
+	targetID = ntohl(targetID);
+	offset += sizeof(targetID);
+
+	memcpy(&targetType, buffer + offset, sizeof(targetType));
+	offset += sizeof(targetType);
+
+	// Validate ship exists and is connected
+	if (shipID >= MAX_CONNECTION || !serverData.totalClients[shipID].connected)
+	{
+		return;
+	}
+
+	// Only process ship-asteroid collisions
+	if (targetType == TARGET_TYPE_ASTEROID)
+	{
+		// Find the asteroid
+		auto it = std::find_if(serverData.asteroids.begin(), serverData.asteroids.end(),
+			[targetID](const Asteroid &a) { return a.ID == targetID && a.active; });
+
+		if (it != serverData.asteroids.end())
+		{
+			// Mark asteroid as inactive
+			it->active = false;
+
+			// Respawn the ship (since it hit an asteroid)
+			RespawnShip(shipID);
+
+			// Broadcast asteroid destruction
+			Packet asteroidPacket(ASTEROID_DESTROYED);
+			asteroidPacket << targetID;
+			asteroidPacket << shipID;  // Who destroyed it (the ship that collided)
+
+			MessageData asteroidMsg;
+			asteroidMsg.commandID = asteroidPacket.id;
+			asteroidMsg.sessionID = -1;
+			asteroidMsg.data = asteroidPacket;
+
+			std::lock_guard<std::mutex> lock(lockMutex);
+			messageQueue.push(asteroidMsg);
+		}
+	}
+	// Ignore all other collision types (ship-ship, ship-bullet)
+
+	// Always broadcast the collision event (even if we didn't process it)
+	// Clients can decide how to handle it visually
+	Packet collisionPacket(SHIP_COLLIDE);
+	collisionPacket << shipID << targetID << targetType;
+
+	MessageData collisionMsg;
+	collisionMsg.commandID = collisionPacket.id;
+	collisionMsg.sessionID = -1;
+	collisionMsg.data = collisionPacket;
+
+	std::lock_guard<std::mutex> lock(lockMutex);
+	messageQueue.push(collisionMsg);
 }
