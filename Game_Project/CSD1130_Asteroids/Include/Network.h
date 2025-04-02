@@ -41,6 +41,7 @@ public:
 	void ReceiveMessages(SOCKET udpSocket);
 	Packet GetIncomingMessage();
 	void CreateMessage(Packet msg);
+	uint64_t GetTimeDiff();
 
 private:
 	SOCKET udpSocket;
@@ -56,7 +57,7 @@ private:
 	std::mutex inMutex;
 	std::mutex outMutex;
 
-	time_t gameStartTime;
+	std::chrono::steady_clock::time_point gameStartTime;
 
 
 	// use mutex to share a queue between game loop and threads
