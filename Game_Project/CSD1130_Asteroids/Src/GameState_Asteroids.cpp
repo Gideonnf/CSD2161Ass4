@@ -86,6 +86,7 @@ const unsigned long FLAG_ACTIVE = 0x00000001;
 // functions to create/destroy a game object instance
 GameObjInst *		gameObjInstCreate (unsigned long type, AEVec2* scale,
 											   AEVec2 * pPos, AEVec2 * pVel, float dir);
+GameObjInst* bulletObjInstCreate(AEVec2* pPos, AEVec2* pVel, float dir, uint32_t id = BULLET_ID_MAX);
 void				gameObjInstDestroy(GameObjInst * pInst);
 
 // To help render game object instances that holds mesh textures
@@ -106,7 +107,6 @@ namespace
 
 	s8 textFont;
 	s8 fontSize;
-
 
 	// For seeding srand
 	time_t timeVar;
@@ -297,7 +297,6 @@ void GameStateAsteroidsInit(void)
 		gameData.spShip[i]->posPrev.x = gameData.spShip[i]->posCurr.x;
 		gameData.spShip[i]->posPrev.y = gameData.spShip[i]->posCurr.y;
 		gameData.spShip[i]->active = false;
-
 	}
 
 
@@ -392,13 +391,11 @@ void GameStateAsteroidsUpdate(void)
 	if (AEInputCheckTriggered(AEVK_SPACE))
 	{
 		AEVec2 pos, vel;
-		AEVec2 scale;
 		// Creates bullets based on the ship's direction and angle
 		pos.x = gameData.spShip[gameData.currID]->posCurr.x;	pos.y = gameData.spShip[gameData.currID]->posCurr.y;
 		vel.x = BULLET_SPEED * cosf(gameData.spShip[gameData.currID]->dirCurr);
 		vel.y = BULLET_SPEED * sinf(gameData.spShip[gameData.currID]->dirCurr);
-		AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-		GameObjInst* bulletObj = gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
+		GameObjInst* bulletObj = bulletObjInstCreate(&pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
 		unsigned int bulletID{};
 
 		for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
@@ -746,6 +743,33 @@ GameObjInst * gameObjInstCreate(unsigned long type,
 	return 0;
 }
 
+GameObjInst* bulletObjInstCreate(AEVec2* pPos, AEVec2* pVel, float dir, uint32_t id)
+{
+	GameObjInst* pInst;
+	if (id >= BULLET_ID_MAX)
+	{
+		pInst = gameData.sGameObjInstList + (gameData.currID * BULLET_ID_MAX) + gameData.bulletIDCount;
+		if (++gameData.bulletIDCount >= BULLET_ID_MAX)
+		{
+			gameData.bulletIDCount = 1;
+		}
+	}
+	else // valid ID
+	{
+		 pInst = gameData.sGameObjInstList + id;
+	}
+	pInst->pObject = gameData.sGameObjList + TYPE_BULLET;
+	pInst->flag = FLAG_ACTIVE;
+	AEVec2 scale;
+	AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
+	pInst->scale = scale;
+
+	pInst->posCurr = *pPos;
+	pInst->posPrev = pInst->posCurr;
+	pInst->velCurr = *pVel;
+	pInst->dirCurr = dir;
+}
+
 /******************************************************************************/
 /*!
 	Destroy game object instance
@@ -1072,20 +1096,16 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		uint32_t bulletID;
 		msg >> timeDiff >> bulletID;
 
-		GameObjInst* pInst = gameData.sGameObjInstList + bulletID;
-		pInst->pObject = gameData.sGameObjList + TYPE_BULLET;
-		pInst->flag = FLAG_ACTIVE;
-		AEVec2 scale;
-		AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-		pInst->scale = scale;
-
+		AEVec2 pos, vel;
+		float dir;
 		// "Pos:" << pos.x << ' ' << pos.y << ' ' <<
 		// "Vel:" << vel.x << ' ' << vel.y << ' ' <<
 		// "Dir:" << gameData.spShip[gameData.currID]->dirCurr;
-		msg >> pInst->posCurr.x >> pInst->posCurr.y;
-		pInst->posPrev = pInst->posCurr;
-		msg >> pInst->velCurr.x >> pInst->velCurr.y;
-		msg >> pInst->dirCurr;
+		msg >> pos.x >> pos.y;
+		msg >> vel.x >> vel.y;
+		msg >> dir;
+
+		GameObjInst* pInst = bulletObjInstCreate(&pos, &vel, dir, bulletID);
 
 		// Calculate timeDiff
 	}
@@ -1109,10 +1129,30 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		//	"BulletID:" << j << ' ' <<
 		//	"AsteroidID:" << i << ' ' <<
 		//	"PlayerScore:" << gameData.sScore;
+	{
+		uint64_t timeDiff;
+		uint32_t bulletID, asteroidID;
+		msg >> timeDiff >> bulletID >> asteroidID;
+
+		// if destroy happen before create (???)
+
+		GameObjInst* pInst = gameData.sGameObjInstList + bulletID;
+		pInst->active = false;
+		pInst = gameData.sGameObjInstList + asteroidID;
+		pInst->active = false;
+	}
 		break;
 	case SHIP_COLLIDE:
 		//	"Time:" << timestamp << ' ' <<
 		//	"AsteroidID:" << i;
+	{
+		uint64_t timeDiff;
+		uint32_t asteroidID;
+		msg >> timeDiff >> asteroidID;
+
+		GameObjInst* pInst = gameData.sGameObjInstList + asteroidID;
+		pInst->active = false;
+	}
 		break;
 	}
 }

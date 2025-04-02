@@ -65,6 +65,8 @@ struct FadeObject
 */
 const unsigned int	GAME_OBJ_NUM_MAX = 32;			// The total number of different objects (Shapes)
 const unsigned int	GAME_OBJ_INST_NUM_MAX = 2048;			// The total number of different game object instances
+const unsigned int  BULLET_ID_MAX = 100;
+
 /******************************************************************************/
 /*!
 	Struct/Class Definitions
@@ -119,6 +121,8 @@ struct GameData
 
 	// pointer to the ship object
 	GameObjInst* spShip[4];										// Pointer to the "Ship" game object instance
+
+	uint32_t bulletIDCount{1};
 
 	// pointer to the wall object
 	//static GameObjInst *		spWall;										// Pointer to the "Wall" game object instance
