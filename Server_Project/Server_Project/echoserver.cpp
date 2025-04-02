@@ -308,82 +308,18 @@ int main()
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
 					offset += msg.data.writePos;
 					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
-
-					// reset the message
-					std::memset(buffer, 0, sizeof(buffer));
-					offset = 0;
-
-					std::vector<int32_t> playerIDs;
-					// use new player join packet
-
-					// Send any existing connected player to the new client as well
-					for (int i = 0; i < MAX_CONNECTION; ++i)
-					{
-						if (i == msg.sessionID) continue; // skip the new player's id
-
-						if (!serverData.totalClients[i].connected) continue; // skip unconnected slots
-
-						playerIDs.push_back(i);
-						//newPlayer << i; // pack the client's ID into it
-					}
-
-					if (!playerIDs.empty())
-					{
-						Packet newPlayer(NEW_PLAYER_JOIN);
-
-						newPlayer << playerIDs.size(); // add how many players are connected
-
-						for (int i = 0; i < playerIDs.size(); ++i)
-						{
-							// add all the player ids
-							newPlayer << playerIDs[i];
-							ClientInfo& info = serverData.totalClients[playerIDs[i]];
-							newPlayer << info.playerShip.xPos;
-							newPlayer << info.playerShip.yPos;
-							newPlayer << info.playerShip.vel_x;
-							newPlayer << info.playerShip.vel_y;
-							newPlayer << info.playerShip.dirCur;
-						}
-
-
-						char msgID = newPlayer.id; // either msg.commandID or msg.data.id
-
-						//std::string messageBody = msg.data.substr(1); // get rid of the 1st char as it's the commandID
-						// ID of the message
-						buffer[0] = msgID;
-						offset++;
-
-						// any other header stuff here
-
-						// add the length of the message
-						uint32_t messageLength = static_cast<uint32_t>(msg.data.writePos); // writePos represents how much was written
-						messageLength = htonl(messageLength);
-						std::memcpy(buffer + offset, &messageLength, sizeof(messageLength));
-						offset += sizeof(messageLength);
-
-						// this msg contains a lsit of every connected client's IDs to the newest joined player
-						// body of the message
-						std::memcpy(buffer + offset, newPlayer.body, newPlayer.writePos);
-						offset += newPlayer.writePos;
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
-
-					}
-
-
 					break;
 				}
 				case NEW_PLAYER_JOIN:
 				{
+					// this packet contains every player data
 					// create the message buffer ifrst
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += sizeof(msg.data.writePos);
+					offset += msg.data.writePos;
 
 					// loop through every client to send this msg to them
 					for (int i = 0; i < MAX_CONNECTION; ++i)
 					{
-						// in this case, sessionID of message is used to represent who is joining
-						if (i == msg.sessionID) continue; // dont send to the new player joining
-
 						ClientInfo &client = serverData.totalClients[i];
 						if (!client.connected) continue; // skip unconnected client slots
 
@@ -445,162 +381,6 @@ int main()
 						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
 					}
 					break;
-				case BULLET_COLLIDE:
-					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
-
-					for (int i = 0; i < MAX_CONNECTION; ++i)
-					{
-						ClientInfo &client = serverData.totalClients[i];
-						if (!client.connected) continue;
-
-						sockaddr_in clientAddr;
-						memset(&clientAddr, 0, sizeof(clientAddr));
-						clientAddr.sin_family = AF_INET;
-						clientAddr.sin_port = htons(client.port);
-						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
-
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
-					}
-
-					break;
-				case BULLET_CREATED:
-					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
-
-					for (int i = 0; i < MAX_CONNECTION; ++i)
-					{
-						ClientInfo &client = serverData.totalClients[i];
-						if (!client.connected) continue;
-
-						sockaddr_in clientAddr;
-						memset(&clientAddr, 0, sizeof(clientAddr));
-						clientAddr.sin_family = AF_INET;
-						clientAddr.sin_port = htons(client.port);
-						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
-
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
-					}
-					break;
-				case ASTEROID_CREATED:
-					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
-
-					for (int i = 0; i < MAX_CONNECTION; ++i)
-					{
-						ClientInfo &client = serverData.totalClients[i];
-						if (!client.connected) continue;
-
-						sockaddr_in clientAddr;
-						memset(&clientAddr, 0, sizeof(clientAddr));
-						clientAddr.sin_family = AF_INET;
-						clientAddr.sin_port = htons(client.port);
-						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
-
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
-					}
-					break;
-				case ASTEROID_DESTROYED:
-					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
-
-					for (int i = 0; i < MAX_CONNECTION; ++i)
-					{
-						ClientInfo &client = serverData.totalClients[i];
-						if (!client.connected) continue;
-
-						sockaddr_in clientAddr;
-						memset(&clientAddr, 0, sizeof(clientAddr));
-						clientAddr.sin_family = AF_INET;
-						clientAddr.sin_port = htons(client.port);
-						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
-
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
-					}
-					break;
-				case SHIP_RESPAWN:
-					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
-
-					for (int i = 0; i < MAX_CONNECTION; ++i)
-					{
-						ClientInfo &client = serverData.totalClients[i];
-						if (!client.connected) continue;
-
-						sockaddr_in clientAddr;
-						memset(&clientAddr, 0, sizeof(clientAddr));
-						clientAddr.sin_family = AF_INET;
-						clientAddr.sin_port = htons(client.port);
-						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
-
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
-					}
-					break;
-				case SHIP_COLLIDE:
-					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
-
-					for (int i = 0; i < MAX_CONNECTION; ++i)
-					{
-						ClientInfo &client = serverData.totalClients[i];
-						if (!client.connected) continue;
-
-						sockaddr_in clientAddr;
-						memset(&clientAddr, 0, sizeof(clientAddr));
-						clientAddr.sin_family = AF_INET;
-						clientAddr.sin_port = htons(client.port);
-						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
-
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
-					}
-					break;
-				case REQ_HIGHSCORE:
-					sockaddr_in otherAddr;
-					memset(&otherAddr, 0, sizeof(otherAddr));
-					otherAddr.sin_family = AF_INET;
-					otherAddr.sin_port = htons(serverData.totalClients[msg.sessionID].port);
-					inet_pton(AF_INET, serverData.totalClients[msg.sessionID].ip.c_str(), &otherAddr.sin_addr);
-
-					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
-					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&otherAddr, sizeof(otherAddr));
-					break;
-				case NEW_HIGHSCORE:
-					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
-
-					for (int i = 0; i < MAX_CONNECTION; ++i)
-					{
-						ClientInfo &client = serverData.totalClients[i];
-						if (!client.connected) continue;
-
-						sockaddr_in clientAddr;
-						memset(&clientAddr, 0, sizeof(clientAddr));
-						clientAddr.sin_family = AF_INET;
-						clientAddr.sin_port = htons(client.port);
-						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
-
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
-					}
-					break;
-				case GAME_START:
-					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
-
-					for (int i = 0; i < MAX_CONNECTION; ++i)
-					{
-						ClientInfo &client = serverData.totalClients[i];
-						if (!client.connected) continue;
-
-						sockaddr_in clientAddr;
-						memset(&clientAddr, 0, sizeof(clientAddr));
-						clientAddr.sin_family = AF_INET;
-						clientAddr.sin_port = htons(client.port);
-						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
-
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
-					}
-					break;
 				case PACKET_ERROR:
 					// Send error response to specific client
 					/*sockaddr_in otherAddr;
@@ -636,10 +416,6 @@ bool SimulatePacketLost()
 	double rand = dis(generator);
 	//std::cout << rand << std::endl;
 	return rand < PACKET_LOSS_RATE;
-}
-
-void UDPSendingHandler()
-{
 }
 
 void UDPReceiveHandler(SOCKET udpListenerSocket)
@@ -690,59 +466,6 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 			case SHIP_MOVE:
 				ProcessShipMovement(recvAddr, buffer, recvLen);
 				break;
-			case REPLY_PLAYER_JOIN:
-				ProcessReplyPlayerJoin(recvAddr, buffer, recvLen);
-				break;
-			case NEW_PLAYER_JOIN:
-				ProcessNewPlayerJoin(recvAddr, buffer, recvLen);
-				break;
-			case BULLET_COLLIDE:
-				if (recvLen < 9) break; // Ensure buffer contains enough bytes (1 byte msgID + 8 bytes data)
-
-				uint32_t bulletID, targetID;
-				uint8_t targetType;
-
-				std::memcpy(&bulletID, buffer + 1, sizeof(uint32_t));
-				std::memcpy(&targetID, buffer + 5, sizeof(uint32_t));
-				std::memcpy(&targetType, buffer + 9, sizeof(uint8_t));
-
-				ProcessBulletCollision(bulletID, targetID, targetType);
-				break;
-			case BULLET_CREATED:
-				ProcessBulletFired(recvAddr, buffer, recvLen);
-				break;
-			case ASTEROID_CREATED:
-				ProcessAsteroidCreated(recvAddr, buffer, recvLen);
-				break;
-			case ASTEROID_DESTROYED:
-				ProcessAsteroidDestroyed(buffer, recvLen);
-				break;
-			case SHIP_RESPAWN:
-			{
-				if (recvLen < 5) break; // Ensure buffer has enough data
-
-				uint32_t playerID;
-				std::memcpy(&playerID, buffer + 1, sizeof(uint32_t));
-
-				RespawnShip(playerID);
-				break;
-
-			}
-			case SHIP_COLLIDE:
-				ProcessShipCollision(buffer, recvLen);
-				break;
-			case REQ_HIGHSCORE:
-				HandleHighscoreRequest(recvAddr);
-				break;
-			case NEW_HIGHSCORE:
-				HandleNewHighscore(buffer, recvLen, recvAddr);
-				break;
-			case GAME_START:
-				ProcessGameStart(recvAddr, buffer, recvLen);
-				break;
-			case PACKET_ERROR:
-				ProcessPacketError(recvAddr, buffer, recvLen);
-				break;
 			}
 		}
 	}
@@ -784,7 +507,6 @@ void HandleGetScores(SOCKET clientSocket)
 	// Send high scores to client
 	send(clientSocket, message, messageSize, 0);
 }
-
 void HandleSubmitScore(char *buffer, SOCKET clientSocket)
 {
 	int offset = 1;  // Skip command ID
@@ -911,8 +633,37 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 		messageQueue.push(newMessage);
 	}
 
+
 	Packet newPlayerPacket(NEW_PLAYER_JOIN);
-	newPlayerPacket << newClient.sessionID; // i think i should be packing the ID of the new client??
+
+	std::vector<int> playerIDs;
+
+	for (int i = 0; i < MAX_CONNECTION; ++i)
+	{
+		//if (i == availID) continue;
+
+		if (!serverData.totalClients[i].connected) continue;
+
+		playerIDs.push_back(i);
+	}
+
+	if (playerIDs.size() <= 1) return; // if onyl 1 player has been made then dont send anything
+
+	newPlayerPacket << (uint32_t)playerIDs.size(); // push back the number of active players
+
+	for (int i = 0; i < playerIDs.size(); ++i)
+	{
+		ClientInfo& info = serverData.totalClients[playerIDs[i]];
+		newPlayerPacket << playerIDs[i];
+		newPlayerPacket << info.playerShip.xPos;
+		newPlayerPacket << info.playerShip.yPos;
+		newPlayerPacket << info.playerShip.vel_x;
+		newPlayerPacket << info.playerShip.vel_y;
+		newPlayerPacket << info.playerShip.dirCur;
+	}
+	//newPlayerPacket << 1; // only 1 new player 
+	//newPlayerPacket << newClient.sessionID; // i think i should be packing the ID of the new client??
+
 	//message = newPlayerPacket.ToString();
 
 	{
@@ -925,128 +676,6 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 		messageQueue.push(newMessage);
 	}
 }
-void ProcessBulletFired(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
-{
-	// Extract the player ID
-	int offset = 1; // Skip message ID
-	uint32_t playerID;
-	memcpy(&playerID, buffer + offset, sizeof(playerID));
-	playerID = ntohl(playerID);
-	offset += sizeof(playerID);
-
-	// Extract bullet position and velocity
-	float xPos, yPos, velX, velY;
-	memcpy(&xPos, buffer + offset, sizeof(float));
-	offset += sizeof(float);
-	memcpy(&yPos, buffer + offset, sizeof(float));
-	offset += sizeof(float);
-	memcpy(&velX, buffer + offset, sizeof(float));
-	offset += sizeof(float);
-	memcpy(&velY, buffer + offset, sizeof(float));
-	offset += sizeof(float);
-
-	// Create a new bullet
-	Bullet newBullet;
-	newBullet.ownerID = playerID;
-	newBullet.xPos = xPos;
-	newBullet.yPos = yPos;
-	newBullet.vel_x = velX;
-	newBullet.vel_y = velY;
-	newBullet.vel_server_x = velX; // Server can adjust if needed for physics
-	newBullet.vel_server_y = velY;
-	newBullet.active = true;
-
-	// Add to server's list of active bullets
-	int bulletID = serverData.nextBulletID++;
-	serverData.activeBullets[bulletID] = newBullet;
-
-	// Create a message to broadcast to all clients that a bullet was fired
-	Packet bulletPacket(BULLET_CREATED);
-	bulletPacket << static_cast<int32_t>(bulletID);
-	bulletPacket << playerID;
-	bulletPacket << xPos << yPos << velX << velY;
-
-	// Queue the message
-	MessageData newMessage;
-	newMessage.commandID = bulletPacket.id;
-	newMessage.sessionID = -1; // Broadcast to all
-	newMessage.data = bulletPacket;
-
-	std::lock_guard<std::mutex> lock(lockMutex);
-	messageQueue.push(newMessage);
-}
-void ProcessBulletCollision(uint32_t bulletID, uint32_t targetID, uint8_t targetType)
-{
-	// Validate IDs exist
-	if (serverData.activeBullets.find(bulletID) == serverData.activeBullets.end())
-	{
-		return; // Bullet doesn't exist
-	}
-
-	Bullet &bullet = serverData.activeBullets[bulletID];
-	uint32_t shooterID = bullet.ownerID;
-
-	// Handle collision based on target type
-	if (targetType == TARGET_TYPE_ASTEROID)
-	{
-		// Check if asteroid exists
-		auto it = std::find_if(serverData.asteroids.begin(), serverData.asteroids.end(),
-			[targetID](const Asteroid &asteroid) { return asteroid.ID == targetID; });
-
-		if (it == serverData.asteroids.end())
-		{
-			return; // Asteroid doesn't exist
-		}
-
-
-		Asteroid &asteroid = serverData.asteroids[targetID];
-
-		// Mark bullet as inactive
-		bullet.active = false;
-
-		// Handle asteroid destruction
-
-			// Asteroid destroyed
-		asteroid.active = false;
-
-		// Award points to the shooter
-		if (shooterID < MAX_CONNECTION && serverData.totalClients[shooterID].connected)
-		{
-			serverData.totalClients[shooterID].playerShip.score += ASTEROID_SCORE;
-		}
-
-
-		// Create asteroid destroyed message
-		Packet asteroidDestroyedPacket(ASTEROID_DESTROYED);
-		asteroidDestroyedPacket << targetID;
-		asteroidDestroyedPacket << shooterID;  // Who destroyed it
-
-		// Queue the message
-		MessageData asteroidMsg;
-		asteroidMsg.commandID = asteroidDestroyedPacket.id;
-		asteroidMsg.sessionID = -1; // Broadcast to all
-		asteroidMsg.data = asteroidDestroyedPacket;
-
-		std::lock_guard<std::mutex> lock(lockMutex);
-		messageQueue.push(asteroidMsg);
-	}
-
-	// Create bullet collision message in all cases
-	Packet bulletCollidePacket(BULLET_COLLIDE);
-	bulletCollidePacket << static_cast<int32_t>(bulletID);
-	bulletCollidePacket << static_cast<int32_t>(targetID);
-	bulletCollidePacket << static_cast<int32_t>(targetType);
-
-	// Queue the message
-	MessageData bulletMsg;
-	bulletMsg.commandID = bulletCollidePacket.id;
-	bulletMsg.sessionID = -1; // Broadcast to all
-	bulletMsg.data = bulletCollidePacket;
-
-	std::lock_guard<std::mutex> lock(lockMutex);
-	messageQueue.push(bulletMsg);
-}
-
 void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int recvLen)
 {
 	std::string ip = inet_ntoa(clientAddr.sin_addr);
@@ -1065,16 +694,20 @@ void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int 
 	std::memcpy(shipMovement.body, buffer + offset, msgLength);
 
 	int playerInput;
+	uint64_t timeDiff;
+	shipMovement >> timeDiff;
 	shipMovement >> playerInput;
 	shipMovement >> client.playerShip.xPos;
 	shipMovement >> client.playerShip.yPos;
 	shipMovement >> client.playerShip.vel_x;
 	shipMovement >> client.playerShip.vel_y;
 	shipMovement >> client.playerShip.dirCur;
+
+	std::cout << "Ship " << serverData.playerMap[ip] << "\n"
+		<< "Curr Pos : " << client.playerShip.xPos << ", " << client.playerShip.yPos << "\n"
+		<< "Curr Vel : " << client.playerShip.vel_x << ", " << client.playerShip.vel_y << "\n";
 	
 }
-
-// Helper function to respawn a ship
 void RespawnShip(uint32_t playerID)
 {
 	if (playerID >= MAX_CONNECTION || !serverData.totalClients[playerID].connected)
@@ -1105,161 +738,6 @@ void RespawnShip(uint32_t playerID)
 
 	std::lock_guard<std::mutex> lock(lockMutex);
 	messageQueue.push(respawnMsg);
-}
-void ProcessAsteroidCreated(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
-{
-	if (recvLen < 1 + sizeof(uint32_t) + 4 * sizeof(float))
-	{
-		return; // Not enough data
-	}
-
-	int offset = 1; // Skip message ID
-
-	// Extract asteroid data
-	uint32_t asteroidID;
-	float xPos, yPos, velX, velY;
-
-	memcpy(&asteroidID, buffer + offset, sizeof(asteroidID));
-	offset += sizeof(asteroidID);
-	memcpy(&xPos, buffer + offset, sizeof(float));
-	offset += sizeof(float);
-	memcpy(&yPos, buffer + offset, sizeof(float));
-	offset += sizeof(float);
-	memcpy(&velX, buffer + offset, sizeof(float));
-	offset += sizeof(float);
-	memcpy(&velY, buffer + offset, sizeof(float));
-	offset += sizeof(float);
-
-	// Create new asteroid
-	Asteroid newAsteroid;
-	newAsteroid.ID = asteroidID;
-	newAsteroid.xPos = xPos;
-	newAsteroid.yPos = yPos;
-	newAsteroid.vel_x = velX;
-	newAsteroid.vel_y = velY;
-	newAsteroid.active = true;
-
-	// Add to server's asteroid list
-	serverData.asteroids.push_back(newAsteroid);
-
-	// Broadcast asteroid creation to all clients
-	Packet asteroidPacket(ASTEROID_CREATED);
-	asteroidPacket << asteroidID << xPos << yPos << velX << velY;
-
-	MessageData newMessage;
-	newMessage.commandID = asteroidPacket.id;
-	newMessage.sessionID = -1; // Broadcast to all
-	newMessage.data = asteroidPacket;
-
-	std::lock_guard<std::mutex> lock(lockMutex);
-	messageQueue.push(newMessage);
-}
-void ProcessAsteroidDestroyed(const char *buffer, int recvLen)
-{
-	if (recvLen < 1 + sizeof(uint32_t))
-	{
-		return; // Not enough data
-	}
-
-	uint32_t asteroidID;
-	memcpy(&asteroidID, buffer + 1, sizeof(asteroidID));
-	asteroidID = ntohl(asteroidID);
-
-	// Find and mark asteroid as inactive
-	auto it = std::find_if(serverData.asteroids.begin(), serverData.asteroids.end(),
-		[asteroidID](const Asteroid &a) { return a.ID == asteroidID; });
-
-	if (it != serverData.asteroids.end())
-	{
-		it->active = false;
-	}
-
-	// Broadcast destruction to all clients
-	Packet asteroidPacket(ASTEROID_DESTROYED);
-	asteroidPacket << asteroidID;
-
-	MessageData newMessage;
-	newMessage.commandID = asteroidPacket.id;
-	newMessage.sessionID = -1; // Broadcast to all
-	newMessage.data = asteroidPacket;
-
-	std::lock_guard<std::mutex> lock(lockMutex);
-	messageQueue.push(newMessage);
-}
-void ProcessShipCollision(const char *buffer, int recvLen)
-{
-	if (recvLen < 1 + 2 * sizeof(uint32_t) + sizeof(uint8_t))
-	{
-		return; // Not enough data
-	}
-
-	int offset = 1; // Skip message ID
-
-	// Extract ship ID and target info
-	uint32_t shipID;
-	uint32_t targetID;
-	uint8_t targetType;
-
-	memcpy(&shipID, buffer + offset, sizeof(shipID));
-	shipID = ntohl(shipID);
-	offset += sizeof(shipID);
-
-	memcpy(&targetID, buffer + offset, sizeof(targetID));
-	targetID = ntohl(targetID);
-	offset += sizeof(targetID);
-
-	memcpy(&targetType, buffer + offset, sizeof(targetType));
-	offset += sizeof(targetType);
-
-	// Validate ship exists and is connected
-	if (shipID >= MAX_CONNECTION || !serverData.totalClients[shipID].connected)
-	{
-		return;
-	}
-
-	// Only process ship-asteroid collisions
-	if (targetType == TARGET_TYPE_ASTEROID)
-	{
-		// Find the asteroid
-		auto it = std::find_if(serverData.asteroids.begin(), serverData.asteroids.end(),
-			[targetID](const Asteroid &a) { return a.ID == targetID && a.active; });
-
-		if (it != serverData.asteroids.end())
-		{
-			// Mark asteroid as inactive
-			it->active = false;
-
-			// Respawn the ship (since it hit an asteroid)
-			RespawnShip(shipID);
-
-			// Broadcast asteroid destruction
-			Packet asteroidPacket(ASTEROID_DESTROYED);
-			asteroidPacket << targetID;
-			asteroidPacket << shipID;  // Who destroyed it (the ship that collided)
-
-			MessageData asteroidMsg;
-			asteroidMsg.commandID = asteroidPacket.id;
-			asteroidMsg.sessionID = -1;
-			asteroidMsg.data = asteroidPacket;
-
-			std::lock_guard<std::mutex> lock(lockMutex);
-			messageQueue.push(asteroidMsg);
-		}
-	}
-	// Ignore all other collision types (ship-ship, ship-bullet)
-
-	// Always broadcast the collision event (even if we didn't process it)
-	// Clients can decide how to handle it visually
-	Packet collisionPacket(SHIP_COLLIDE);
-	collisionPacket << shipID << targetID << targetType;
-
-	MessageData collisionMsg;
-	collisionMsg.commandID = collisionPacket.id;
-	collisionMsg.sessionID = -1;
-	collisionMsg.data = collisionPacket;
-
-	std::lock_guard<std::mutex> lock(lockMutex);
-	messageQueue.push(collisionMsg);
 }
 void HandleHighscoreRequest(const sockaddr_in &clientAddr)
 {
@@ -1375,105 +853,4 @@ void BroadcastHighScores()
 		std::lock_guard<std::mutex> lock(lockMutex);
 		messageQueue.push(newMessage);
 	}
-}
-
-void ProcessReplyPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
-{
-	if (recvLen < 1 + sizeof(uint32_t))
-	{
-		return; // Not enough data for player ID
-	}
-
-	uint32_t playerID;
-	memcpy(&playerID, buffer + 1, sizeof(playerID));
-	playerID = ntohl(playerID);
-
-	// Validate player ID
-	if (playerID >= MAX_CONNECTION || !serverData.totalClients[playerID].connected)
-	{
-		return;
-	}
-
-	// Typically this would be a client->server acknowledgement
-	// Could update connection status or resend join info if needed
-	if (debugPrint)
-	{
-		std::cout << "Player " << playerID << " acknowledged join" << std::endl;
-	}
-}
-void ProcessNewPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
-{
-	if (recvLen < 1 + sizeof(uint32_t))
-	{
-		return; // Not enough data for player ID
-	}
-
-	uint32_t newPlayerID;
-	memcpy(&newPlayerID, buffer + 1, sizeof(newPlayerID));
-	newPlayerID = ntohl(newPlayerID);
-
-	// Validate new player exists
-	if (newPlayerID >= MAX_CONNECTION || !serverData.totalClients[newPlayerID].connected)
-	{
-		return;
-	}
-
-	// Broadcast ship data to all other players
-	ClientInfo &newClient = serverData.totalClients[newPlayerID];
-
-	Packet shipPacket(NEW_PLAYER_JOIN);
-	shipPacket << newPlayerID
-		<< newClient.playerShip.xPos << newClient.playerShip.yPos
-		<< newClient.playerShip.vel_x << newClient.playerShip.vel_y;
-
-	MessageData msg;
-	msg.commandID = shipPacket.id;
-	msg.sessionID = -1; // Broadcast to all
-	msg.data = shipPacket;
-
-	std::lock_guard<std::mutex> lock(lockMutex);
-	messageQueue.push(msg);
-}
-void ProcessGameStart(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
-{
-	// Typically initiated by server, but could handle client-ready signals
-	if (serverData.gameRunning)
-	{
-		return; // Game already running
-	}
-
-	serverData.gameRunning = true;
-
-	// Broadcast game start to all clients
-	Packet startPacket(GAME_START);
-
-	MessageData msg;
-	msg.commandID = startPacket.id;
-	msg.sessionID = -1;
-	msg.data = startPacket;
-
-	std::lock_guard<std::mutex> lock(lockMutex);
-	messageQueue.push(msg);
-
-	if (debugPrint)
-	{
-		std::cout << "Game started!" << std::endl;
-	}
-}
-void ProcessPacketError(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
-{
-	if (recvLen < 1 + sizeof(uint32_t))
-	{
-		return; // Not enough data for error code
-	}
-
-	uint32_t errorCode;
-	memcpy(&errorCode, buffer + 1, sizeof(errorCode));
-	errorCode = ntohl(errorCode);
-
-	// Log client-reported errors
-	std::cerr << "Client reported error: " << errorCode << std::endl;
-
-	// Optionally: Resend last packet to that client
-	// ...
 }

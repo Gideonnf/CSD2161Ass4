@@ -100,7 +100,6 @@ struct MessageData
 };
 
 
-
 inline uint64_t my_htonll(uint64_t val) {
 	return ((uint64_t)htonl((uint32_t)(val & 0xFFFFFFFF)) << 32) | htonl((uint32_t)(val >> 32));
 }

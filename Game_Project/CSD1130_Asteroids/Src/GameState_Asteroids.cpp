@@ -51,6 +51,7 @@ const float         ASTEROID_ACCEL = 100.0f;
 const float			POWERUP_ACCEL = 50.0f;
 const float         POWERUP_TIME = 5.0f;
 const float         WAVE_TIME = 4.0f;
+const float			FIXED_DELTA_TIME = 0.01667f; // Fixed time step for 60 FPS
 
 // -----------------------------------------------------------------------------
 enum TYPE
@@ -114,6 +115,10 @@ namespace
 	//f64 waveTimer;
 
 	bool gameOver;
+
+	double accumulatedTime = 0.0;
+
+
 }
 
 /******************************************************************************/
@@ -309,7 +314,7 @@ void GameStateAsteroidsInit(void)
 
 	// reset the score and the number of ships
 	gameData.sScore      = 0;
-	
+	accumulatedTime = 0.0;
 
 	gameOver = false;
 	gameData.onValueChange = true; // To reprint the console if player choose to restart
@@ -323,221 +328,182 @@ void GameStateAsteroidsInit(void)
 void GameStateAsteroidsUpdate(void)
 {
 	int playerInput = 0;
-
-	// =========================================================
-	// update according to input
-	// =========================================================
-	gameData.spShip[gameData.currID]->pObject->pTexture = shipTexture;
-	if (AEInputCheckCurr(AEVK_UP))
+	accumulatedTime += AEFrameRateControllerGetFrameTime();
+	while (accumulatedTime >= FIXED_DELTA_TIME)
 	{
-		// Get the direction and calculate the velocity and apply it to the current velocity.
-		AEVec2 dir;
-		AEVec2Set(&dir, cosf(gameData.spShip[gameData.currID]->dirCurr), sinf(gameData.spShip[gameData.currID]->dirCurr));
-		AEVec2Normalize(&dir, &dir);
-
-		AEVec2Scale(&dir, &dir, SHIP_ACCEL_FORWARD * (float)(AEFrameRateControllerGetFrameTime()) * 0.99f);
-		AEVec2Add(&gameData.spShip[gameData.currID]->velCurr, &gameData.spShip[gameData.currID]->velCurr, &dir);
-
-		gameData.spShip[gameData.currID]->pObject->pTexture = shipFireTexture;
-
-		playerInput = 1;
-	}
-
-	if (AEInputCheckCurr(AEVK_DOWN))
-	{
-		// Get the direction and calculate the velocity and apply it to the current velocity.
-		// Apply speed negatively since its going backward
-		AEVec2 dir;
-		AEVec2Set(&dir, cosf(gameData.spShip[gameData.currID]->dirCurr), sinf(gameData.spShip[gameData.currID]->dirCurr));
-		AEVec2Normalize(&dir, &dir);
-		AEVec2Scale(&dir, &dir, -SHIP_ACCEL_BACKWARD * (float)(AEFrameRateControllerGetFrameTime()) * 0.99f);
-		AEVec2Add(&gameData.spShip[gameData.currID]->velCurr, &gameData.spShip[gameData.currID]->velCurr, &dir);
-		gameData.spShip[gameData.currID]->pObject->pTexture = shipFireTexture;
-
-		playerInput = 2;
-	}
-
-	if (AEInputCheckCurr(AEVK_LEFT))
-	{
-		// Rotate the ship, wrap the angle
-		gameData.spShip[gameData.currID]->dirCurr += SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
-		gameData.spShip[gameData.currID]->dirCurr =  AEWrap(gameData.spShip[gameData.currID]->dirCurr, -PI, PI);
-
-		playerInput = 3;
-	}
-
-	if (AEInputCheckCurr(AEVK_RIGHT))
-	{
-		// Rotate the ship, wrap the angle
-		gameData.spShip[gameData.currID]->dirCurr -= SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime ());
-		gameData.spShip[gameData.currID]->dirCurr =  AEWrap(gameData.spShip[gameData.currID]->dirCurr, -PI, PI);
-
-		playerInput = 4;
-	}
-
-	if (gameOver)
-	{
-		if (AEInputCheckTriggered(AEVK_R))
+		// =========================================================
+		// update according to input
+		// =========================================================
+		gameData.spShip[gameData.currID]->pObject->pTexture = shipTexture;
+		if (AEInputCheckCurr(AEVK_UP))
 		{
-			gGameStateNext = GS_RESTART;
+			// Get the direction and calculate the velocity and apply it to the current velocity.
+			AEVec2 dir;
+			AEVec2Set(&dir, cosf(gameData.spShip[gameData.currID]->dirCurr), sinf(gameData.spShip[gameData.currID]->dirCurr));
+			AEVec2Normalize(&dir, &dir);
+
+			AEVec2Scale(&dir, &dir, SHIP_ACCEL_FORWARD * (float)(AEFrameRateControllerGetFrameTime()) * 0.99f);
+			AEVec2Add(&gameData.spShip[gameData.currID]->velCurr, &gameData.spShip[gameData.currID]->velCurr, &dir);
+
+			gameData.spShip[gameData.currID]->pObject->pTexture = shipFireTexture;
+
+			playerInput = 1;
 		}
 
-		if (AEInputCheckTriggered(AEVK_B))
+		if (AEInputCheckCurr(AEVK_DOWN))
 		{
-			gGameStateNext = GS_MENU;
-		}
-	}
+			// Get the direction and calculate the velocity and apply it to the current velocity.
+			// Apply speed negatively since its going backward
+			AEVec2 dir;
+			AEVec2Set(&dir, cosf(gameData.spShip[gameData.currID]->dirCurr), sinf(gameData.spShip[gameData.currID]->dirCurr));
+			AEVec2Normalize(&dir, &dir);
+			AEVec2Scale(&dir, &dir, -SHIP_ACCEL_BACKWARD * (float)(AEFrameRateControllerGetFrameTime()) * 0.99f);
+			AEVec2Add(&gameData.spShip[gameData.currID]->velCurr, &gameData.spShip[gameData.currID]->velCurr, &dir);
+			gameData.spShip[gameData.currID]->pObject->pTexture = shipFireTexture;
 
-	// Shoot a bullet if space is triggered (Create a new object instance)
-	if (AEInputCheckTriggered(AEVK_SPACE))
-	{
-		AEVec2 pos, vel;
-		AEVec2 scale;
-		// Creates bullets based on the ship's direction and angle
-		pos.x = gameData.spShip[gameData.currID]->posCurr.x;	pos.y = gameData.spShip[gameData.currID]->posCurr.y;
-		vel.x = BULLET_SPEED * cosf(gameData.spShip[gameData.currID]->dirCurr);
-		vel.y = BULLET_SPEED * sinf(gameData.spShip[gameData.currID]->dirCurr);
-		AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-		GameObjInst* bulletObj = gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
-		unsigned int bulletID{};
+			playerInput = 2;
+		}
+
+		if (AEInputCheckCurr(AEVK_LEFT))
+		{
+			// Rotate the ship, wrap the angle
+			gameData.spShip[gameData.currID]->dirCurr += SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime());
+			gameData.spShip[gameData.currID]->dirCurr = AEWrap(gameData.spShip[gameData.currID]->dirCurr, -PI, PI);
+
+			playerInput = 3;
+		}
+
+		if (AEInputCheckCurr(AEVK_RIGHT))
+		{
+			// Rotate the ship, wrap the angle
+			gameData.spShip[gameData.currID]->dirCurr -= SHIP_ROT_SPEED * (float)(AEFrameRateControllerGetFrameTime());
+			gameData.spShip[gameData.currID]->dirCurr = AEWrap(gameData.spShip[gameData.currID]->dirCurr, -PI, PI);
+
+			playerInput = 4;
+		}
+
+		if (gameOver)
+		{
+			if (AEInputCheckTriggered(AEVK_R))
+			{
+				gGameStateNext = GS_RESTART;
+			}
+
+			if (AEInputCheckTriggered(AEVK_B))
+			{
+				gGameStateNext = GS_MENU;
+			}
+		}
+
+		// Shoot a bullet if space is triggered (Create a new object instance)
+		if (AEInputCheckTriggered(AEVK_SPACE))
+		{
+			AEVec2 pos, vel;
+			AEVec2 scale;
+			// Creates bullets based on the ship's direction and angle
+			pos.x = gameData.spShip[gameData.currID]->posCurr.x;	pos.y = gameData.spShip[gameData.currID]->posCurr.y;
+			vel.x = BULLET_SPEED * cosf(gameData.spShip[gameData.currID]->dirCurr);
+			vel.y = BULLET_SPEED * sinf(gameData.spShip[gameData.currID]->dirCurr);
+			AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
+			GameObjInst* bulletObj = gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
+			unsigned int bulletID{};
+
+			for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
+			{
+				GameObjInst* pInst = gameData.sGameObjInstList + i;
+				if (pInst == bulletObj)
+				{
+					bulletID = i;
+					break;
+				}
+			}
+
+			{
+				Packet pck(CMDID::BULLET_CREATED);
+				pck << NetworkClient::Instance().GetTimeDiff() << bulletID << pos.x << pos.y << vel.x << vel.y << gameData.spShip[gameData.currID]->dirCurr;
+				NetworkClient::Instance().CreateMessage(pck);
+			}
+
+		}
+
+		// Save previous positions
+		//  -- For all instances
+		// [DO NOT UPDATE THIS PARAGRAPH'S CODE]
+		// ======================================================================
+		for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
+		{
+			// Update all the GO Instances's prev positions here
+			// Before doing any update in collision and movement
+			GameObjInst* pInst = gameData.sGameObjInstList + i;
+
+			// skip non-active object
+			if ((pInst->flag & FLAG_ACTIVE) == 0)
+				continue;
+
+			pInst->posPrev.x = pInst->posCurr.x;
+			pInst->posPrev.y = pInst->posCurr.y;
+		}
+
+		// Updates the collision boxes (AABB) of the game objects
+		UpdateGOCollisionBoxes();
+
+		// ======================================================================
+		// check for dynamic-static collisions (one case only: Ship vs Wall)
+		// [DO NOT UPDATE THIS PARAGRAPH'S CODE]
+		// ======================================================================
+		//Helper_Wall_Collision();
+
+		// ======================================================================
+		// check for dynamic-dynamic collisions
+		// ======================================================================
+		// Loop through GO lists and check collisions between objects
+		CheckGOCollision();
+
+		// Update the GOs (i.e movement, etc)
+		UpdateGO();
+
+		if (playerInput != 0)
+		{
+			Packet pck(CMDID::SHIP_MOVE);
+			pck << NetworkClient::Instance().GetTimeDiff() << playerInput <<
+				gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
+				gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
+				gameData.spShip[gameData.currID]->dirCurr;
+			NetworkClient::Instance().CreateMessage(pck);
+			//  "Time:" << timestamp << ' ' <<
+			//	"Input:" << playerInput << ' ' <<
+			//	"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
+			//	"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
+			//	"Dir:" << gameData.spShip->dirCurr;
+		}
+
+		// =====================================================================
+		// calculate the matrix for all objects
+		// =====================================================================
 
 		for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 		{
 			GameObjInst* pInst = gameData.sGameObjInstList + i;
-			if (pInst == bulletObj)
-			{
-				bulletID = i;
-				break;
-			}
+			AEMtx33		 trans, rot, scale;
+
+			// skip non-active object
+			if ((pInst->flag & FLAG_ACTIVE) == 0)
+				continue;
+
+			// Compute the scaling matrix
+			AEMtx33Scale(&scale, pInst->scale.x, pInst->scale.y);
+			// Compute the rotation matrix 
+			AEMtx33Rot(&rot, pInst->dirCurr);
+			// Compute the translation matrix
+			AEMtx33Trans(&trans, pInst->posCurr.x, pInst->posCurr.y);
+			// Concatenate the 3 matrix in the correct order in the object instance's "transform" matrix
+			AEMtx33Concat(&pInst->transform, &rot, &scale);
+			AEMtx33Concat(&pInst->transform, &trans, &pInst->transform);
 		}
 
-		{
-			Packet pck(CMDID::BULLET_CREATED);
-			pck << NetworkClient::Instance().GetTimeDiff() << bulletID << pos.x << pos.y << vel.x << vel.y << gameData.spShip[gameData.currID]->dirCurr;
-			NetworkClient::Instance().CreateMessage(pck);
-			// "Time:" << NetworkClient::Instance().GetTimeDiff() << ' ' <<
-			// "ID:" << bulletID <<
-			// "Pos:" << pos.x << ' ' << pos.y << ' ' <<
-			// "Vel:" << vel.x << ' ' << vel.y << ' ' <<
-			// "Dir:" << gameData.spShip[gameData.currID]->dirCurr;
-		}
-
-		/*if (shipShotgun == 1)
-		{
-			float bulletOffset = 0.1f;
-			{
-				pos.x = spShip->posCurr.x;	pos.y = spShip->posCurr.y;
-				vel.x = BULLET_SPEED * cosf(spShip->dirCurr + bulletOffset);
-				vel.y = BULLET_SPEED * sinf(spShip->dirCurr + bulletOffset);
-				AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-				gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, spShip->dirCurr + bulletOffset);
-
-				pos.x = spShip->posCurr.x;	pos.y = spShip->posCurr.y;
-				vel.x = BULLET_SPEED * cosf(spShip->dirCurr + bulletOffset * 2);
-				vel.y = BULLET_SPEED * sinf(spShip->dirCurr + bulletOffset * 2);
-				AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-				gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, spShip->dirCurr + bulletOffset);
-
-				pos.x = spShip->posCurr.x;	pos.y = spShip->posCurr.y;
-				vel.x = BULLET_SPEED * cosf(spShip->dirCurr - bulletOffset);
-				vel.y = BULLET_SPEED * sinf(spShip->dirCurr - bulletOffset);
-				AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-				gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, spShip->dirCurr + bulletOffset);
-
-				pos.x = spShip->posCurr.x;	pos.y = spShip->posCurr.y;
-				vel.x = BULLET_SPEED * cosf(spShip->dirCurr - bulletOffset * 2);
-				vel.y = BULLET_SPEED * sinf(spShip->dirCurr - bulletOffset * 2);
-				AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-				gameObjInstCreate(TYPE_BULLET, &scale, &pos, &vel, spShip->dirCurr + bulletOffset);
-			}
-		}*/
+		accumulatedTime -= FIXED_DELTA_TIME;
 	}
 
-	// Check wave timer
-	//waveTimer += AEFrameRateControllerGetFrameTime();
-	//if (waveTimer >= WAVE_TIME)
-	//{
-	//	// Spawn a new wave if it reaches wave time
-	//	NewAsteroidWave();
-	//	waveTimer = 0.0f;
-	//}
-
-
-	// ======================================================================
-	// Save previous positions
-	//  -- For all instances
-	// [DO NOT UPDATE THIS PARAGRAPH'S CODE]
-	// ======================================================================
-	for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
-	{
-		// Update all the GO Instances's prev positions here
-		// Before doing any update in collision and movement
-		GameObjInst* pInst = gameData.sGameObjInstList + i;
-
-		// skip non-active object
-		if ((pInst->flag & FLAG_ACTIVE) == 0)
-			continue;
-
-		pInst->posPrev.x = pInst->posCurr.x;
-		pInst->posPrev.y = pInst->posCurr.y;
-	}
-
-	// Updates the collision boxes (AABB) of the game objects
-	UpdateGOCollisionBoxes();
-
-	// ======================================================================
-	// check for dynamic-static collisions (one case only: Ship vs Wall)
-	// [DO NOT UPDATE THIS PARAGRAPH'S CODE]
-	// ======================================================================
-	//Helper_Wall_Collision();
-
-	// ======================================================================
-	// check for dynamic-dynamic collisions
-	// ======================================================================
-	// Loop through GO lists and check collisions between objects
-	CheckGOCollision();
-
-	// Update the GOs (i.e movement, etc)
-	UpdateGO();
-	
-	if (playerInput != 0)
-	{
-		Packet pck(CMDID::SHIP_MOVE);
-		pck << NetworkClient::Instance().GetTimeDiff() << playerInput <<
-			gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
-			gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
-			gameData.spShip[gameData.currID]->dirCurr;
-		NetworkClient::Instance().CreateMessage(pck);
-		//  "Time:" << timestamp << ' ' <<
-		//	"Input:" << playerInput << ' ' <<
-		//	"Pos:" << gameData.spShip->posCurr.x << ' ' << gameData.spShip->posCurr.y << ' ' <<
-		//	"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
-		//	"Dir:" << gameData.spShip->dirCurr;
-	}
-
-	// =====================================================================
-	// calculate the matrix for all objects
-	// =====================================================================
-
-	for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
-	{
-		GameObjInst * pInst = gameData.sGameObjInstList + i;
-		AEMtx33		 trans, rot, scale;
-
-		// skip non-active object
-		if ((pInst->flag & FLAG_ACTIVE) == 0)
-			continue;
-
-		// Compute the scaling matrix
-		AEMtx33Scale(&scale, pInst->scale.x, pInst->scale.y);
-		// Compute the rotation matrix 
-		AEMtx33Rot(&rot, pInst->dirCurr);
-		// Compute the translation matrix
-		AEMtx33Trans(&trans, pInst->posCurr.x, pInst->posCurr.y);
-		// Concatenate the 3 matrix in the correct order in the object instance's "transform" matrix
-		AEMtx33Concat(&pInst->transform, &rot, &scale);
-		AEMtx33Concat(&pInst->transform, &trans, &pInst->transform);
-	}
 }
 
 /******************************************************************************/
@@ -1043,11 +1009,16 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	case NEW_PLAYER_JOIN:
 	{
 			// get how many player ids to pull
-		size_t num;
+		int num;
 		msg >> num; // get the num of players
 		for (size_t i = 0; i < num; ++i)
 		{
 			msg >> clientID;
+			//if (clientID == gameData.currID)
+			//{
+			//	
+			//	continue;
+			//}
 			msg >> (float)gameData.spShip[clientID]->posCurr.x;
 			msg >> (float)gameData.spShip[clientID]->posCurr.y;
 			msg >> (float)gameData.spShip[clientID]->velCurr.x;
