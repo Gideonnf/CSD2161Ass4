@@ -232,6 +232,10 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 			offset++;
 			
 			// if theres any other header stuff u need to take out cna do it here
+			uint32_t seshID;
+			memcpy(&seshID, buffer + offset, sizeof(seshID));
+			seshID = ntohl(seshID);
+			offset += sizeof(seshID);
 
 			// get the file length
 			uint32_t msgLength;
