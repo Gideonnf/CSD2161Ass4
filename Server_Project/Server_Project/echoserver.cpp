@@ -248,16 +248,34 @@ int main()
 	const auto interval = std::chrono::duration<double>(0.01); // every 10 ms? idk for now
 	auto lastSendTime = std::chrono::steady_clock::now();
 
+	auto lastPrintTime = std::chrono::steady_clock::now();
+	const auto printInterval = std::chrono::duration<double>(1.0); // every 10 ms? idk for now
+
 	while (true)
 	{
 		auto currTime = std::chrono::steady_clock::now();
+
+		if (currTime - lastPrintTime >= printInterval)
+		{
+			lastPrintTime = currTime;
+			for (int i = 0; i < MAX_CONNECTION; ++i)
+			{
+				if (!serverData.totalClients[i].connected) continue;
+
+				ClientInfo& client = serverData.totalClients[i];
+
+				std::cout << "Ship " << i << "\n"
+					<< "Curr Pos : " << client.playerShip.xPos << ", " << client.playerShip.yPos << "\n"
+					<< "Curr Vel : " << client.playerShip.vel_x << ", " << client.playerShip.vel_y << "\n";
+
+			}
+		}
+
 		// so that I only send out every interval time 
 		// timer
 		// every 0.01 maybe, Clear the msg queue by sending the message to every client
 		if (currTime - lastSendTime >= interval)
 		{
-
-
 			// set to the curr time it is resolving all messages
 			lastSendTime = currTime;
 			std::queue<MessageData> messages;
@@ -343,6 +361,32 @@ int main()
 					break;
 				}
 				case SHIP_MOVE:
+
+					//msg.data << msg.sessionID;
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo& client = serverData.totalClients[i];
+						if (!client.connected) continue; // skip unconnected client slots
+						if (client.sessionID == msg.sessionID) continue; // dont update for hte client thats moving
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+
+						// convert IP string to binary format
+						if (inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr) <= 0)
+						{
+							// invalid IP
+							continue;
+						}
+
+						// send it
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+					}
+					
 					break;
 
 				case PLAYER_DC:
@@ -399,6 +443,81 @@ int main()
 				// pop the message im using
 				messages.pop();
 			}
+		
+#pragma region STATE_UPDATE
+
+			//// i should really store total connected clients os i dont have to keep looping this shit
+			//// loop through every ship
+			//std::vector<int> connectedClients;
+			//for (int i = 0; i < MAX_CONNECTION; ++i)
+			//{
+			//	if (serverData.totalClients[i].connected)
+			//		connectedClients.push_back(i);
+			//}
+
+			//// sending positions only really needed if theres more than 1
+			//if (connectedClients.size() > 1)
+			//{
+			//	// send current game state to all clients (i.e all ship's current positions etc, and later on asteroids/bullets as well)
+			//	Packet stateUpdate(STATE_UPDATE);
+
+			//	stateUpdate << (uint32_t)connectedClients.size();
+
+			//	for (int i = 0; i < connectedClients.size(); ++i)
+			//	{
+			//		stateUpdate << connectedClients[i];
+			//		ClientInfo& info = serverData.totalClients[connectedClients[i]];
+			//		stateUpdate << info.playerShip.xPos;
+			//		stateUpdate << info.playerShip.yPos;
+			//		stateUpdate << info.playerShip.vel_x;
+			//		stateUpdate << info.playerShip.vel_y;
+			//		stateUpdate << info.playerShip.dirCur;
+			//	}
+
+
+			//	char updateBuffer[MAX_STR_LEN];
+			//	int updateOffset = 0;
+			//	std::memset(updateBuffer, 0, MAX_STR_LEN);
+
+			//	updateBuffer[0] = stateUpdate.id;
+			//	updateOffset++;
+
+			//	// Any other header stuff do here
+
+			//	// add the length of the message
+			//	uint32_t messageLength = static_cast<uint32_t>(stateUpdate.writePos); // writePos represents how much was written
+			//	messageLength = htonl(messageLength);
+			//	std::memcpy(updateBuffer + updateOffset, &messageLength, sizeof(messageLength));
+			//	updateOffset += sizeof(messageLength);
+
+			//	// now add the body of the packet
+			//	std::memcpy(updateBuffer + updateOffset, stateUpdate.body, stateUpdate.writePos);
+			//	updateOffset += stateUpdate.writePos;
+
+
+			//	for (int i = 0; i < MAX_CONNECTION; ++i)
+			//	{
+			//		ClientInfo& client = serverData.totalClients[i];
+			//		if (!client.connected) continue; // skip unconnected client slots
+
+			//		sockaddr_in clientAddr;
+			//		memset(&clientAddr, 0, sizeof(clientAddr));
+			//		clientAddr.sin_family = AF_INET;
+			//		clientAddr.sin_port = htons(client.port);
+
+			//		// convert IP string to binary format
+			//		if (inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr) <= 0)
+			//		{
+			//			// invalid IP
+			//			continue;
+			//		}
+
+			//		// send it
+			//		sendto(udpListenerSocket, updateBuffer, updateOffset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+			//	}
+			//}
+#pragma endregion
+
 		}
 
 		Sleep(SLEEP_TIME);
@@ -692,11 +811,13 @@ void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int 
 	offset += sizeof(msgLength);
 
 	Packet shipMovement(SHIP_MOVE);
-	shipMovement.writePos = msgLength;
+	shipMovement.writePos += msgLength;
 	std::memcpy(shipMovement.body, buffer + offset, msgLength);
 
+	int sessionID;
 	int playerInput;
 	uint64_t timeDiff;
+	shipMovement >> sessionID;
 	shipMovement >> timeDiff;
 	shipMovement >> playerInput;
 	shipMovement >> client.playerShip.xPos;
@@ -705,10 +826,17 @@ void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int 
 	shipMovement >> client.playerShip.vel_y;
 	shipMovement >> client.playerShip.dirCur;
 
-	std::cout << "Ship " << serverData.playerMap[ip] << "\n"
-		<< "Curr Pos : " << client.playerShip.xPos << ", " << client.playerShip.yPos << "\n"
-		<< "Curr Vel : " << client.playerShip.vel_x << ", " << client.playerShip.vel_y << "\n";
-	
+
+	{
+		MessageData newMessage;
+		newMessage.commandID = shipMovement.id;
+		newMessage.sessionID = client.sessionID;// sending to the current client's id which is i 
+		newMessage.data = shipMovement;
+
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(newMessage);
+	}
+
 }
 void RespawnShip(uint32_t playerID)
 {

@@ -492,16 +492,13 @@ void GameStateAsteroidsUpdate(void)
 		if (playerInput != 0)
 		{
 			Packet pck(CMDID::SHIP_MOVE);
-			pck << NetworkClient::Instance().GetTimeDiff() << playerInput <<
+			pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << playerInput <<
 				gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
 				gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
 				gameData.spShip[gameData.currID]->dirCurr;
 			NetworkClient::Instance().CreateMessage(pck);
 
 
-			std::cout << "Ship " << gameData.currID << "\n"
-				<< "Curr Pos : " << gameData.spShip[gameData.currID]->posCurr.x << ", " << gameData.spShip[gameData.currID]->posCurr.y << "\n"
-				<< "Curr Vel : " << gameData.spShip[gameData.currID]->velCurr.x << ", " << gameData.spShip[gameData.currID]->velCurr.y << "\n";
 
 
 
@@ -1071,6 +1068,43 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		break;
 
 	}
+	case STATE_UPDATE:
+	{
+		int numOfShips;
+		msg >> numOfShips;
+		for (int i = 0; i < numOfShips; ++i)
+		{
+			msg >> clientID;
+
+			// i cant continue cause i need to update readPos
+			//if (clientID == gameData.currID)
+			//{
+			//	// nvm i can just update read pos fk it
+			//	msg.readPos += 20; // 5 floats * 4 = 20 bytes to skip
+			//	continue;
+			//}
+			msg >> (float)gameData.spShip[clientID]->posCurr.x;
+			msg >> (float)gameData.spShip[clientID]->posCurr.y;
+			msg >> (float)gameData.spShip[clientID]->velCurr.x;
+			msg >> (float)gameData.spShip[clientID]->velCurr.x;
+			msg >> gameData.spShip[clientID]->dirCurr;
+		}
+
+		//for (int i = 0; i < 4; ++i)
+		//{
+		//	if (!gameData.spShip[i]->active) continue;
+
+		//	//ClientInfo& client = serverData.totalClients[i];
+
+		//	std::cout << "Ship " << i << "\n"
+		//		<< "Curr Pos : " << gameData.spShip[i]->posCurr.x << ", " << gameData.spShip[i]->posCurr.y << "\n"
+		//		<< "Curr Vel : " << gameData.spShip[i]->velCurr.x << ", " << gameData.spShip[i]->velCurr.y << "\n";
+
+		//}
+
+
+		break;
+	}
 		// switch cases
 	case ASTEROID_CREATED: // temporary
 		ProcessNewAsteroid(msg, data);
@@ -1104,8 +1138,11 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		//	"Vel:" << gameData.spShip->velCurr.x << ' ' << gameData.spShip->velCurr.y << ' ' <<
 		//	"Dir:" << gameData.spShip->dirCurr;
 	{
+
+		msg >> clientID;
 		uint64_t timeDiff;
-		msg >> timeDiff >> clientID;
+		int playerInput;
+		msg >> timeDiff >> playerInput;
 		msg >> gameData.spShip[clientID]->posCurr.x >> gameData.spShip[clientID]->posCurr.y >>
 			gameData.spShip[clientID]->velCurr.x >> gameData.spShip[clientID]->velCurr.y >>
 			gameData.spShip[clientID]->dirCurr;
