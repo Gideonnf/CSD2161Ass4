@@ -180,7 +180,7 @@ inline Packet& operator>>(Packet& packet, int8_t& data)
 template <>
 inline Packet& operator<< (Packet& packet, const int16_t& data)
 {
-	int16_t netVal = htons(static_cast<int16_t>(data));
+	uint16_t netVal = htons(static_cast<uint16_t>(data));
 	std::memcpy(packet.body + packet.writePos, &netVal, sizeof(netVal));
 	packet.writePos += sizeof(netVal);
 	return packet;
@@ -203,7 +203,7 @@ inline Packet& operator>>(Packet& packet, int16_t& data)
 		return packet;
 	}
 
-	int16_t netVal;
+	uint16_t netVal;
 	std::memcpy(&netVal, packet.body + packet.readPos, sizeof(netVal));
 	packet.readPos += sizeof(netVal);
 	data = static_cast<int16_t>(ntohs(netVal));
@@ -276,7 +276,7 @@ inline Packet& operator>>(Packet& packet, uint32_t& data)
 	uint32_t netVal;
 	std::memcpy(&netVal, packet.body + packet.readPos, sizeof(netVal));
 	packet.readPos += sizeof(netVal);
-	data = static_cast<uint32_t>(ntohl(netVal));
+	data = /*static_cast<uint32_t>*/(ntohl(netVal));
 	return packet;
 }
 
@@ -336,7 +336,7 @@ inline Packet& operator>>(Packet& packet, float& data)
 template <>
 inline Packet& operator<< (Packet& packet, const int64_t& data)
 {
-	int64_t netVal = htonll(static_cast<int64_t>(data));
+	int64_t netVal = htonll(static_cast<uint64_t>(data));
 	std::memcpy(packet.body + packet.writePos, &netVal, sizeof(netVal));
 	packet.writePos += sizeof(netVal);
 	return packet;
@@ -361,7 +361,7 @@ inline Packet& operator>>(Packet& packet, int64_t& data)
 		return packet;
 	}
 
-	int64_t netVal;
+	uint64_t netVal;
 	std::memcpy(&netVal, packet.body + packet.readPos, sizeof(netVal));
 	packet.readPos += sizeof(netVal);
 	data = static_cast<int64_t>(ntohll(netVal));
@@ -380,7 +380,7 @@ inline Packet& operator>>(Packet& packet, uint64_t& data)
 	uint64_t netVal;
 	std::memcpy(&netVal, packet.body + packet.readPos, sizeof(netVal));
 	packet.readPos += sizeof(netVal);
-	data = static_cast<uint64_t>(ntohl(netVal));
+	data = /*static_cast<int64_t>*/(ntohll(netVal));
 	return packet;
 }
 
