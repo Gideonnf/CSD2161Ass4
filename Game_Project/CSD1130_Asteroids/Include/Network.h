@@ -39,8 +39,8 @@ public:
 	void Shutdown();
 	void SendMessages(SOCKET clientSocket);
 	void ReceiveMessages(SOCKET udpSocket);
-	std::string GetIncomingMessage();
-	void CreateMessage(std::string msg);
+	Packet GetIncomingMessage();
+	void CreateMessage(Packet msg);
 
 private:
 	SOCKET udpSocket;
@@ -51,8 +51,8 @@ private:
 	std::thread senderThread;
 	std::thread recvThread;
 
-	std::queue<std::string> incomingMessages;
-	std::queue<std::string> outgoingMessages;
+	std::queue<Packet> incomingMessages;
+	std::queue<Packet> outgoingMessages;
 	std::mutex inMutex;
 	std::mutex outMutex;
 

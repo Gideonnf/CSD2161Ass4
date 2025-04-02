@@ -24,12 +24,16 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define WIN32_LEAN_AND_MEAN
 #endif
 
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
 #include "Windows.h"		// Entire Win32 API...
 #include "winsock2.h"		// ...or Winsock alone
 #include "ws2tcpip.h"		// getaddrinfo()
 #include <filesystem>
 #include <unordered_map>
 #include <random>
+#include <mutex>
+#include <queue>
 
 // Tell the Visual Studio linker to include the following library in linking.
 // Alternatively, we could add this file to the linker command-line parameters,
@@ -38,7 +42,8 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <cstdio>
 #include <iostream>			   // cout, cerr
 #include <string>			     // string
-
+#include "Packet.h"
+#include "Network.h"
 #include "taskqueue.h"
 #include "highscores.h"
 
@@ -67,6 +72,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define RSP_SUBMIT_SCORE ((unsigned char)0x7)
 #define REQ_GET_SCORES ((unsigned char)0x8)
 #define RSP_GET_SCORES ((unsigned char)0x9)
+#define SLEEP_TIME 500
 
 // Add these new handler functions:
 
@@ -109,7 +115,7 @@ void HandleSubmitScore(char *buffer, SOCKET clientSocket)
 	// Send response to client
 	send(clientSocket, message, messageSize, 0);
 }
-
+void ProcessPlayerJoin(const sockaddr_in& clientAddr, const char* buffer, int recvLen);
 void HandleGetScores(SOCKET clientSocket)
 {
 	char message[MAX_STR_LEN];
@@ -146,40 +152,15 @@ void HandleGetScores(SOCKET clientSocket)
 	// Send high scores to client
 	send(clientSocket, message, messageSize, 0);
 }
-void disconnect(SOCKET& listenerSocket);
-bool execute(SOCKET clientSocket);
-//void HandleEchoMessage(SOCKET clientSocket, char* buffer, int length);
-void HandleListFiles(SOCKET clientSocket);
-void HandleDownloadRequest(char* buffer, SOCKET clientSocket);
-void UDPSendingHandler(uint32_t sessionID);
+void UDPSendingHandler();
 void UDPReceiveHandler(SOCKET udpListenerSocket);
 
 static int userCount = 0;
 
-struct ClientInfo
-{
-	std::string ip;
-	uint16_t port;
+std::mutex lockMutex;
+std::queue<MessageData> messageQueue;
 
-	int sessionID{};
-	//uint32_t seqNum{};
-	std::unordered_map<int, bool> ackReceived;
-
-	uint32_t fileSize{};
-	uint32_t numPackets{};
-	uint32_t currPackets{};
-	uint32_t retryCount{};
-
-	std::chrono::steady_clock::time_point startTime{};
-	double totalTime;
-
-	bool completed{ false };
-};
-
-// <sessionID, fileName>
-std::unordered_map<uint32_t, std::string> sessionMapFiles;
-std::unordered_map<uint32_t, ClientInfo> sessionClientMap;
-std::vector<SOCKET> clientSockets;
+static ServerData serverData;
 
 SOCKET udpListenerSocket = INVALID_SOCKET;
 std::string filePath; 
@@ -192,19 +173,11 @@ int main()
 {
 	// Get Port Number
 	std::string input;
-	std::cout << "Server TCP Port Number: ";
-	std::getline(std::cin, input);
-	std::string portStringTCP = input;
-
 	// comment out for now cause idk how to do the UDP part yet
 	
 	std::cout << "Server UDP Port Number: ";
 	std::getline(std::cin, input);
 	std::string portStringUDP = input;
-
-	std::cout << "File Path: ";
-	std::getline(std::cin, input);
-	filePath = input;
 
 	unsigned seed = (unsigned int)std::chrono::system_clock::now().time_since_epoch().count();
 	generator = std::mt19937(seed);
@@ -250,63 +223,6 @@ int main()
 	char host[MAX_STR_LEN];
 	gethostname(host, MAX_STR_LEN);
 	
-	addrinfo* info = nullptr;
-	errorCode = getaddrinfo(host, portStringTCP.c_str(), &hints, &info);
-	if ((NO_ERROR != errorCode) || (nullptr == info))
-	{
-		std::cerr << "getaddrinfo() failed." << std::endl;
-		WSACleanup();
-		return errorCode;
-	}
-
-	/* PRINT SERVER IP ADDRESS AND PORT NUMBER */
-	char serverIPAddr[MAX_STR_LEN];
-	struct sockaddr_in* serverAddress = reinterpret_cast<struct sockaddr_in*> (info->ai_addr);
-	inet_ntop(AF_INET, &(serverAddress->sin_addr), serverIPAddr, INET_ADDRSTRLEN);
-	getnameinfo(info->ai_addr, static_cast <socklen_t> (info->ai_addrlen), serverIPAddr, sizeof(serverIPAddr), nullptr, 0, NI_NUMERICHOST);
-	std::cout << std::endl;
-	std::cout << "Server IP Address: " << serverIPAddr << std::endl;
-	std::cout << "Server TCP Port Number: " << portStringTCP << std::endl;
-	
-	// -------------------------------------------------------------------------
-	// Create a socket and bind it to own network interface controller.
-	//
-	// socket()
-	// bind()
-	// -------------------------------------------------------------------------
-
-	SOCKET listenerSocket = socket(
-		hints.ai_family,
-		hints.ai_socktype,
-		hints.ai_protocol);
-	if (INVALID_SOCKET == listenerSocket)
-	{
-		std::cerr << "socket() failed." << std::endl;
-		freeaddrinfo(info);
-		WSACleanup();
-		return RETURN_CODE_1;
-	}
-
-	errorCode = bind(
-		listenerSocket,
-		info->ai_addr,
-		static_cast<int>(info->ai_addrlen));
-	if (NO_ERROR != errorCode)
-	{
-		std::cerr << "bind() failed." << std::endl;
-		closesocket(listenerSocket);
-		listenerSocket = INVALID_SOCKET;
-	}
-
-	freeaddrinfo(info);
-
-	if (INVALID_SOCKET == listenerSocket)
-	{
-		std::cerr << "bind() failed." << std::endl;
-		WSACleanup();
-		return RETURN_CODE_2;
-	}
-
 	// -------------------------------------------------------------------------
 	// Create a UDP socket and bind it to own network interface controller.
 	//
@@ -329,11 +245,8 @@ int main()
 
 	gethostname(host, MAX_STR_LEN);
 
-	//if (info != nullptr)
-	//{
-	//	freeaddrinfo(info);
-	//
-	//}
+	addrinfo* info = nullptr;
+
 	info = nullptr;
 	errorCode = getaddrinfo(host, portStringUDP.c_str(), &hints, &info);
 	if ((NO_ERROR != errorCode) || (nullptr == info))
@@ -343,6 +256,14 @@ int main()
 		return errorCode;
 	}
 
+	/* PRINT SERVER IP ADDRESS AND PORT NUMBER */
+	char serverIPAddr[MAX_STR_LEN];
+	struct sockaddr_in* serverAddress = reinterpret_cast<struct sockaddr_in*> (info->ai_addr);
+	inet_ntop(AF_INET, &(serverAddress->sin_addr), serverIPAddr, INET_ADDRSTRLEN);
+	getnameinfo(info->ai_addr, static_cast <socklen_t> (info->ai_addrlen), serverIPAddr, sizeof(serverIPAddr), nullptr, 0, NI_NUMERICHOST);
+	std::cout << std::endl;
+	std::cout << "Server IP Address: " << serverIPAddr << std::endl;
+	std::cout << "Server UDP Port Number: " << portStringUDP << std::endl;
 
 	udpListenerSocket = socket(
 		hints.ai_family,
@@ -373,64 +294,116 @@ int main()
 		return RETURN_CODE_2;
 	}
 	std::thread udpThread(UDPReceiveHandler, udpListenerSocket);
+	//std::thread udpSendThread(UDPSendingHandler);
 
-	//UDPReceiveHandler(udpListenerSocket);
+	const auto interval = std::chrono::duration<double>(0.01); // every 10 ms? idk for now
+	auto lastSendTime = std::chrono::steady_clock::now();
 
-	// -------------------------------------------------------------------------
-	// Set a socket in a listening mode and accept 1 incoming client.
-	//
-	// listen()
-	// accept()
-	// -------------------------------------------------------------------------
-
-	errorCode = listen(listenerSocket, SOMAXCONN);
-	if (NO_ERROR != errorCode)
+	while (true)
 	{
-		std::cerr << "listen() failed." << std::endl;
-		closesocket(listenerSocket);
-		WSACleanup();
-		return RETURN_CODE_3;
-	}
-
-	{
-		const auto onDisconnect = [&]() { disconnect(listenerSocket); };
-
-		auto tq = TaskQueue<SOCKET, decltype(execute), decltype(onDisconnect)>{ 10, 20, execute, onDisconnect };
-
-		while (listenerSocket != INVALID_SOCKET)
+		auto currTime = std::chrono::steady_clock::now();
+		// so that I only send out every interval time 
+		// timer
+		// every 0.01 maybe, Clear the msg queue by sending the message to every client
+		if (currTime - lastSendTime >= interval)
 		{
-			sockaddr clientAddress{};
-			SecureZeroMemory(&clientAddress, sizeof(clientAddress));
-			int clientAddressSize = sizeof(clientAddress);
-			SOCKET clientSocket = accept(
-				listenerSocket,
-				&clientAddress,
-				&clientAddressSize);
-			if (clientSocket == INVALID_SOCKET)
+			// set to the curr time it is resolving all messages
+			lastSendTime = currTime;
+			std::queue<MessageData> messages;
 			{
-				continue;
+				std::lock_guard<std::mutex> lock(lockMutex);
+				// swap to the local queue of messages so I dont have to keep doing lock_guard shit
+				std::swap(messages, messageQueue);
 			}
 
-			char clientIPAddr[MAX_STR_LEN];
-			char clientPort[MAX_STR_LEN];
-			getpeername(clientSocket, &clientAddress, &clientAddressSize);
-			getnameinfo(&clientAddress, clientAddressSize, clientIPAddr, sizeof(clientIPAddr), clientPort, sizeof(clientPort), NI_NUMERICHOST);
-			std::cout << std::endl;
-			std::cout << "Client IP Address: " << clientIPAddr << std::endl;
-			std::cout << "Client Port Number: " << clientPort << std::endl;
-			//std::cout << "Connection established! Press 'Enter' to quit -";
-			std::cout << std::endl;
+			// loop through every message to send out
+			while (!messages.empty())
+			{
+				char buffer[MAX_STR_LEN];
+				int offset = 0;
+				std::memset(buffer, 0, sizeof(buffer));
 
-			clientSockets.push_back(clientSocket);
+				const MessageData& msg = messages.front();
+				char msgID = msg.data.id; // either msg.commandID or msg.data.id
 
-			tq.produce(clientSocket);
+				//std::string messageBody = msg.data.substr(1); // get rid of the 1st char as it's the commandID
+				// ID of the message
+				buffer[0] = msgID;
+				offset++;
+
+				// Any other header stuff do here
+
+				// add the length of the message
+				uint32_t messageLength = static_cast<uint32_t>(msg.data.writePos); // writePos represents how much was written
+				messageLength = htonl(messageLength);
+				std::memcpy(buffer + offset, &messageLength, sizeof(messageLength));
+				offset += sizeof(messageLength);
+
+				switch (msgID)
+				{
+				case REPLY_PLAYER_JOIN:
+				{
+					// this only sends to 1 client
+
+					// START OF GETTING CLIENT SOCKET
+					sockaddr_in otherAddr;
+					memset(&otherAddr, 0, sizeof(otherAddr));
+					otherAddr.sin_family = AF_INET;
+					// get the port of the target client
+					otherAddr.sin_port = htons(serverData.totalClients[msg.sessionID].port);
+					// get the ip of the target client
+					inet_pton(AF_INET, serverData.totalClients[msg.sessionID].ip.c_str(), &otherAddr.sin_addr);
+					// END OF GETTING CLIENT SOCKET
+					
+					// body of the message
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
+					break;
+				}
+				case NEW_PLAYER_JOIN:
+				{
+					// create the message buffer ifrst
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += sizeof(msg.data.writePos);
+
+					// loop through every client to send this msg to them
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						// in this case, sessionID of message is used to represent who is joining
+						if (i == msg.sessionID) continue; // dont send to the new player joining
+
+						ClientInfo& client = serverData.totalClients[i];
+						if (!client.connected) continue; // skip unconnected client slots
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+
+						// convert IP string to binary format
+						if (inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr) <= 0)
+						{
+							// invalid IP
+							continue;
+						}
+
+						// send it
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+					}
+					break;
+				}
+				case SHIP_MOVE:
+					break;
+
+				}
+				// pop the message im using
+				messages.pop();
+			}
 		}
+
+		Sleep(SLEEP_TIME);
 	}
-
-	//std::thread tcpThread(TCPServerHandler, listenerSocket);
-
-
-
 	// -------------------------------------------------------------------------
 	// Clean-up after Winsock.
 	//
@@ -440,231 +413,6 @@ int main()
 	WSACleanup();
 }
 
-void disconnect(SOCKET& listenerSocket)
-{
-	if (listenerSocket != INVALID_SOCKET)
-	{
-		for (auto it = clientSockets.begin(); it != clientSockets.end(); ++it)
-		{
-			//
-			if (*it == listenerSocket)
-			{
-				clientSockets.erase(it);
-				break;
-			}
-		}
-		shutdown(listenerSocket, SD_BOTH);
-		closesocket(listenerSocket);
-		listenerSocket = INVALID_SOCKET;
-	}
-}
-
-bool execute(SOCKET clientSocket)
-{
-
-	// -------------------------------------------------------------------------
-	// Receive some text and send it back.
-	//
-	// recv()
-	// send()
-	// -------------------------------------------------------------------------
-
-	while (true)
-	{
-		char buffer[MAX_STR_LEN] = { 0 };
-
-		const int bytesReceived = recv(
-			clientSocket,
-			buffer,
-			MAX_STR_LEN,
-			0);
-		if (bytesReceived == SOCKET_ERROR)
-		{
-			size_t errorCode = WSAGetLastError();
-			if (errorCode == WSAEWOULDBLOCK)
-			{
-				// A non-blocking call returned no data; sleep and try again.
-				//using namespace std::chrono_literals;
-				//std::this_thread::sleep_for(200ms);
-
-				//std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-				std::cerr << "trying again..." << std::endl;
-				continue;
-			}
-			//std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-
-			std::cerr << "recv() failed." << std::endl;
-			break;
-		}
-		if (bytesReceived == 0)
-		{
-			//std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-			std::cerr << "Graceful shutdown." << std::endl;
-			break;
-		}
-
-		// get command ID
-		uint8_t commandID = static_cast<uint8_t>(buffer[0]);
-
-		switch (commandID)
-		{
-		case REQ_QUIT:
-			{
-				sockaddr_in senderAddr;
-				int addrSize = sizeof(senderAddr);
-				// get the sender's ip and port
-				getpeername(clientSocket, (sockaddr*)&senderAddr, &addrSize);
-				char clientIPAddr[INET_ADDRSTRLEN];
-				inet_ntop(AF_INET, &senderAddr.sin_addr, clientIPAddr, INET_ADDRSTRLEN);
-				int clientPort = ntohs(senderAddr.sin_port);
-
-				std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-				std::cout << "Client " << clientIPAddr << ":" << clientPort << " is shutting down" << std::endl;
-
-				//std::cout << "Connection established! Press 'Enter' to quit -";
-				//std::cout << std::endl;
-
-				/*char message[MAX_STR_LEN];
-				unsigned int messageSize = 0;*/
-
-				// unknown command sent
-				/*	message[0] = REQ_QUIT;
-				messageSize += 1;*/
-
-				send(clientSocket, buffer, bytesReceived, 0);
-
-			}
-			
-
-			break;
-		case REQ_DOWNLOAD:
-			HandleDownloadRequest(buffer, clientSocket);
-			break;
-		case RSP_DOWNLOAD:
-			break;
-		case REQ_LISTFILES:
-			HandleListFiles(clientSocket);
-			break;
-		case RSP_LISTFILES:
-			break;
-		case REQ_SUBMIT_SCORE:
-			HandleSubmitScore(buffer, clientSocket);
-			break;
-		case REQ_GET_SCORES:
-			HandleGetScores(clientSocket);
-			break;
-		default:
-		{
-			char message[MAX_STR_LEN];
-			unsigned int messageSize = 0;
-
-			// unknown command sent
-			message[0] = REQ_UNKNOWN;
-			messageSize += 1;
-
-			send(clientSocket, message, messageSize, 0);
-		}
-
-			break;
-		}
-	}
-
-	// -------------------------------------------------------------------------
-	// Shut down and close sockets.
-	//
-	// shutdown()
-	// closesocket()
-	// -------------------------------------------------------------------------
-
-	for (auto it = clientSockets.begin(); it != clientSockets.end(); ++it)
-	{
-		//
-		if (*it == clientSocket)
-		{
-			clientSockets.erase(it);
-			break;
-		}
-	}
-	shutdown(clientSocket, SD_BOTH);
-	closesocket(clientSocket);
-	return true;
-}
-
-void HandleListFiles(SOCKET clientSocket)
-{
-	char message[MAX_STR_LEN];
-	memset(message, 0, sizeof(message));
-	// Get the file path
-	std::filesystem::path currentPath = std::filesystem::current_path();
-	// all files stored in ServerProject/Files
-	std::filesystem::path combineFilePath = currentPath / filePath;
-	std::vector<std::string> fileList;
-	if (std::filesystem::exists(combineFilePath) && std::filesystem::is_directory(combineFilePath))
-	{
-		for (const auto& entry : std::filesystem::directory_iterator(combineFilePath))
-		{
-			fileList.push_back(entry.path().filename().string());
-			//std::cout << entry.path().filename().string() << std::endl;
-		}
-	}
-
-	unsigned int messageSize = 0;
-
-	message[0] = RSP_LISTFILES;
-	messageSize += 1;
-
-	// get the number of files
-	uint16_t numOfFiles = static_cast<uint16_t>(fileList.size());
-	uint16_t numFilesNetworkOrder = htons(numOfFiles);
-	memcpy(&message[messageSize], &numFilesNetworkOrder, sizeof(numFilesNetworkOrder));
-	messageSize += sizeof(numFilesNetworkOrder);
-
-	
-	// skip the message length first until after
-	messageSize += 4; // 4 bytes of length of list
-	unsigned int fileMessageSize = 0;
-
-	for (auto it : fileList)
-	{
-		// get size of the file name and copy to msg
-		uint32_t fileSize = static_cast<uint32_t>(it.length());
-		uint32_t fileSizeNetworkOrder = htonl(fileSize);
-		memcpy(&message[messageSize], &fileSizeNetworkOrder, sizeof(fileSizeNetworkOrder));
-		messageSize += sizeof(fileSizeNetworkOrder);
-		fileMessageSize += sizeof(fileSizeNetworkOrder);
-		
-		// now get the actual file name
-		memcpy(&message[messageSize], it.c_str(), it.size());
-		messageSize += (unsigned int)it.size();
-		fileMessageSize += (unsigned int)it.size();
-	}
-	
-	// go back to the message length
-	uint32_t messageLengthNetworkOrder = htonl(fileMessageSize);
-	memcpy(&message[3], &messageLengthNetworkOrder, sizeof(messageLengthNetworkOrder));
-	
-	send(clientSocket, message, messageSize, 0);
-}
-
-bool DoesFileExist(std::string fileName)
-{
-	std::filesystem::path currentPath = std::filesystem::current_path();
-	// all files stored in ServerProject/Files
-	std::filesystem::path combineFilePath = currentPath / filePath;
-	
-	if (std::filesystem::exists(combineFilePath) && std::filesystem::is_directory(combineFilePath))
-	{
-		for (const auto& entry : std::filesystem::directory_iterator(combineFilePath))
-		{
-			if (entry.path().filename().string() == fileName)
-				return true;
-			//fileList.push_back(entry.path().filename().string());
-			//std::cout << entry.path().filename().string() << std::endl;
-		}
-	}
-
-	return false;
-}
 
 bool SimulatePacketLost()
 {
@@ -673,297 +421,8 @@ bool SimulatePacketLost()
 	return rand < PACKET_LOSS_RATE;
 }
 
-void HandleDownloadRequest(char* buffer, SOCKET clientSocket)
+void UDPSendingHandler()
 {
-	char message[MAX_STR_LEN];
-	memset(message, 0, sizeof(message));
-	int offset = 1;
-
-	// get the ip addr
-	char clientIP[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &buffer[offset], clientIP, sizeof(clientIP));
-	offset += 4;
-
-	// get the port
-	uint16_t clientPort;
-	memcpy(&clientPort, &buffer[offset], 2);
-	clientPort = ntohs(clientPort); // convert
-	offset += 2;
-
-	// get the length of file name
-	uint32_t filenameLength;
-	memcpy(&filenameLength, &buffer[offset], 4);
-	filenameLength = ntohl(filenameLength); // convert
-	offset += 4;
-
-	// extract the file name after
-	std::string fileName(buffer + offset, filenameLength);
-
-	printf("Client requesting file: %s\n", fileName.c_str());
-
-	if (!DoesFileExist(fileName))
-	{
-		printf("Client requested file that does not exist");
-		unsigned int messageSize = 0;
-		message[0] = DOWNLOAD_ERROR;
-		messageSize++;
-
-		// send RSP_DOWNLOAD msg to client
-		send(clientSocket, message, messageSize, 0);
-
-		return;
-	}
-
-	// get length of file
-	std::filesystem::path currentPath = std::filesystem::current_path();
-	// all files stored in ServerProject/Files
-	std::filesystem::path combineFilePath = currentPath / filePath / fileName;
-	
-	FILE* file = nullptr;
-	errno_t errorCode = fopen_s(&file, combineFilePath.string().c_str(), "rb");
-	if (errorCode != 0)
-	{
-		std::cout << "Unable to open file " << combineFilePath.string() << std::endl;
-		//printf("Unable to open file %s\n", combineFilePath.string());
-	}
-
-	fseek(file, 0, SEEK_END);
-	uint32_t fileSize = ftell(file);
-	rewind(file);
-
-	fclose(file);
-
-	// randomise a session ID for each client
-	uint32_t sessionID = userCount;
-	userCount++;
-
-
-	// send RSP back
-	unsigned int messageSize = 0;
-
-	message[0] = RSP_DOWNLOAD;
-	messageSize += 1;
-
-	// copy the ip address
-	memcpy(message + messageSize, buffer + messageSize, 4);
-	messageSize += 4;
-
-	// copy the port
-	memcpy(message + messageSize, buffer + messageSize, 2);
-	messageSize += 2;
-
-	uint32_t sessionIDNetworkOrder = htonl(sessionID);
-	memcpy(message + messageSize, &sessionIDNetworkOrder, sizeof(sessionIDNetworkOrder));
-	messageSize += sizeof(sessionIDNetworkOrder);
-
-	uint32_t fileSizeNetworkOrder = htonl(fileSize);
-	memcpy(message + messageSize, &fileSizeNetworkOrder, sizeof(fileSizeNetworkOrder));
-	messageSize += sizeof(fileSizeNetworkOrder);
-
-	// send RSP_DOWNLOAD msg to client
-	send(clientSocket, message, messageSize, 0);
-
-	// start file transfer
-
-	sessionMapFiles[sessionID] = fileName;
-	sessionClientMap[sessionID] = { clientIP, clientPort };
-	sessionClientMap[sessionID].sessionID = sessionID;
-
-	std::cout << "New client with session ID: " << sessionID << std::endl;
-
-
-	std::thread udpThread(UDPSendingHandler, sessionID);
-	udpThread.detach(); // detach it cause it can end on its own once its done sending
-}
-
-void UDPSendingHandler(uint32_t sessionID)
-{
-	if (sessionMapFiles.count(sessionID) == 0)
-	{
-		// session ID not found
-		printf("SessionID not found");
-		return;
-	}
-
-	
-	
-
-	std::string fileName = sessionMapFiles[sessionID];
-	ClientInfo& client = sessionClientMap[sessionID];
-
-
-	struct sockaddr_in clientAddr;
-	clientAddr.sin_family = AF_INET;
-	clientAddr.sin_port = htons(client.port);
-	inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
-
-	std::filesystem::path currentPath = std::filesystem::current_path();
-	// all files stored in ServerProject/Files
-	std::filesystem::path combineFilePath = currentPath / filePath / fileName;
-
-	FILE* file = nullptr;
-	errno_t errorCode = fopen_s(&file, combineFilePath.string().c_str(), "rb");
-	if (errorCode != 0)
-	{
-		std::cout << "Unable to open file " << combineFilePath.string() << std::endl;
-	}
-
-	if (file == nullptr)
-	{
-		std::cout << "Unable to open file " << std::endl;
-		return;
-	}
-
-	fseek(file, 0, SEEK_END);
-	client.fileSize = ftell(file);
-	rewind(file);
-
-
-
-	char buffer[MAX_STR_LEN];
-	uint32_t seqNum = 0;
-	//std::unordered_map<int, bool> ackReceived;
-	int messageHeader = 8;
-
-	client.numPackets = client.fileSize / (MAX_STR_LEN - messageHeader) + ((client.fileSize % (MAX_STR_LEN - messageHeader) != 0) ? 1 : 0);
-
-	auto startFileSend = std::chrono::steady_clock::now();
-
-
-	while (!feof(file))
-	{
-		auto totalElapsedTime = std::chrono::steady_clock::now() - startFileSend;
-		int sentPackets = 0;
-		// send 5 packets first in one go
-		while (sentPackets < WINDOW_SIZE && !feof(file))
-		{
-			memset(buffer, 0, sizeof(buffer));
-			size_t bytesRead = fread(buffer, 1, (MAX_STR_LEN - 8), file);
-			char packet[MAX_STR_LEN];
-
-			uint32_t sessionIDNetworkOrder = htonl(sessionID);
-			uint32_t seqNumNetworkOrder = htonl(seqNum);
-			memcpy(packet, &sessionIDNetworkOrder, 4);
-			memcpy(packet + 4, &seqNumNetworkOrder, 4);
-			memcpy(packet + 8, buffer, bytesRead);
-
-			if (SIMULATE_PACKET_LOSS)
-			{
-				if (SimulatePacketLost())
-				{
-					if (debugPrint)
-						std::cout << "Failed sending packet to " << sessionID << " with seq num " << seqNum << std::endl;
-				}
-				else
-				{
-					sendto(udpListenerSocket, packet, (int)bytesRead + messageHeader, 0, (struct sockaddr*)&clientAddr, sizeof(clientAddr));
-					if (debugPrint)
-						std::cout << "Sending packet to " << sessionID << " with seq num " << seqNum << std::endl;
-				}
-
-			}
-			else
-			{
-				sendto(udpListenerSocket, packet, (int)bytesRead + messageHeader, 0, (struct sockaddr*)&clientAddr, sizeof(clientAddr));
-			}
-			// store it's acknowledgement in a map to check for receiving back from client
-			client.ackReceived[seqNum] = false;
-			seqNum++;
-			sentPackets++;
-		}
-
-		//std::cout << "total Elasped " << std::chrono::duration_cast<std::chrono::milliseconds>(totalElapsedTime).count() << std::endl;
-
-		if (std::chrono::duration_cast<std::chrono::milliseconds>(totalElapsedTime).count() > PRINTOUT_MS)
-		{
-			startFileSend = std::chrono::steady_clock::now();
-			// calculate percentage of packets sent vs packets left
-			// num of packets sent / total packets * 100
-			//int percentageDone = (int)(((seqNum + 1) / (float)client.numPackets) * 100.0f);
-
-			std::lock_guard<std::mutex> userLock{ _stdoutMutex };
-			std::cout << "Progress of file transfer : " << seqNum << "/" << client.numPackets << std::endl;
-		}
-
-		// start a timer to check for time out
-		auto startTime = std::chrono::steady_clock::now();
-		while (1)
-		{
-
-			// not all packets have been received yet
-			bool allAcknowledged = true;
-			for (const auto& ack : client.ackReceived)
-			{
-				// if any isn't yet then break
-				if (ack.second == false)
-				{
-					allAcknowledged = false;
-					break;
-				}
-			}
-
-			// go to the next chunk
-			if (allAcknowledged) break;
-
-			// get the current elapsed time
-			auto elapsedTime = std::chrono::steady_clock::now() - startTime;
-
-
-			// if it reaches time out then find out which sequence didn't get received and send that
-			if (std::chrono::duration_cast<std::chrono::milliseconds>(elapsedTime).count() > TIMEOUT_MS)
-			{
-				//std::cout << "Receiving timed out, resending any unacknowledged packets" << std::endl;
-
-				for (const auto& ackPair : client.ackReceived)
-				{
-					if (ackPair.second == false)
-					{
-						// find out where the unacknowledged sequence start
-						fseek(file, ackPair.first * (MAX_STR_LEN - messageHeader), SEEK_SET);
-						memset(buffer, 0, sizeof(buffer));
-						size_t bytesRead = fread(buffer, 1, (MAX_STR_LEN - messageHeader), file);
-
-						uint32_t sessionIDNetworkOrder = htonl(sessionID);
-						uint32_t seqNumNetworkOrder = htonl(ackPair.first);
-
-
-						char packet[MAX_STR_LEN];
-						memcpy(packet, &sessionIDNetworkOrder, 4);
-						memcpy(packet + 4, &seqNumNetworkOrder, 4);
-						memcpy(packet + 8, buffer, bytesRead);
-
-						sendto(udpListenerSocket, packet, (int)bytesRead + messageHeader, 0, (struct sockaddr*)&clientAddr, sizeof(clientAddr));
-					
-						//if (debugPrint)
-						{
-							std::lock_guard<std::mutex> userLock{ _stdoutMutex };
-							std::cout << "Resending packet " << ackPair.first << " to " << sessionID << std::endl;
-						}
-					}
-				}
-
-				client.retryCount++;
-				startTime = std::chrono::steady_clock::now();
-			}
-
-			// if max retries
-			if (client.retryCount == MAX_RETRIES)
-			{
-				std::cout << "Reaching max retries for " << client.sessionID << ". Ending Thread." << std::endl;
-				break;
-			}
-		}
-
-		if (client.retryCount == MAX_RETRIES)
-		{
-			break;
-		}
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleep delay
-	}
-
-	fclose(file);
-	printf("File transfer complete. \n");
 }
 
 void UDPReceiveHandler(SOCKET udpListenerSocket)
@@ -972,14 +431,14 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 	u_long enable = 1;
 	ioctlsocket(udpListenerSocket, FIONBIO, &enable);
 
-	while (1)
+	while (true)
 	{
-		char ackBuffer[8];
+		char buffer[MAX_STR_LEN];
 		struct sockaddr_in recvAddr;
 		int recvAddrLen = sizeof(recvAddr);
 
 		// receive from client
-		int recvLen = recvfrom(udpListenerSocket, ackBuffer, sizeof(ackBuffer), 0, (struct sockaddr*)&recvAddr, &recvAddrLen);
+		int recvLen = recvfrom(udpListenerSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&recvAddr, &recvAddrLen);
 
 		if (recvLen == SOCKET_ERROR)
 		{
@@ -991,18 +450,6 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 			}
 		}
 
-		//if (recvLen < 0)
-		//{
-		//	/*size_t errCode = WSAGetLastError();
-		//	if (errCode == WSAEWOULDBLOCK)
-		//	{
-		//		Sleep(200);
-		//		continue;
-		//	}*/
-		//	//Sleep(200);
-		//	continue;
-		//}
-
 		if (recvLen == 0)
 		{
 			// mutex lock
@@ -1012,48 +459,74 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 
 		if (recvLen > 0)
 		{
+			char msgID = buffer[0];
 
-			uint32_t ackSessionID{};
-			uint32_t ackSeqNum{};
-			memcpy(&ackSessionID, ackBuffer, 4);
-			memcpy(&ackSeqNum, ackBuffer + 4, 4);
-			ackSessionID = ntohl(ackSessionID);
-			ackSeqNum = ntohl(ackSeqNum);
-
-			if (debugPrint)
-				std::cout << "Receiving packet from " << ackSessionID << " with seq num " << ackSeqNum << std::endl;
-
-			// Check through active file transfer list
-			// if client ID is the same as the sessionID
-			if (sessionClientMap.count(ackSessionID) == 0)
+			// i only do this one for now
+			switch (msgID)
 			{
-				continue;
+			case PLAYER_JOIN:
+				ProcessPlayerJoin(recvAddr, buffer, recvLen);
+				break;
+			case SHIP_MOVE:
+				break;
 			}
-
-			sessionClientMap[ackSessionID].ackReceived[ackSeqNum] = true;
-			// received a packet
-			sessionClientMap[ackSessionID].currPackets++;
-			// reset retry count if its successful
-			sessionClientMap[ackSessionID].retryCount = 0;
-
-			if (sessionClientMap[ackSessionID].currPackets == sessionClientMap[ackSessionID].numPackets)
-			{
-				auto chronoEnd = std::chrono::steady_clock::now() - sessionClientMap[ackSessionID].startTime;
-				sessionClientMap[ackSessionID].totalTime = (double)std::chrono::duration_cast<std::chrono::milliseconds>(chronoEnd).count();
-				// received all packets
-				sessionClientMap[ackSessionID].completed = true;
-
-				if (debugPrint)
-					std::cout << ackSessionID << " has finished downloading the file" << std::endl;
-
-				//break;
-
-				// send TCP msg for completed download
-			}
-
 		}
+	}
+}
 
-
+void ProcessPlayerJoin( const sockaddr_in& clientAddr, const char* buffer,  int recvLen)
+{
+	int32_t availID = -1;
+	for (int i = 0; i < MAX_CONNECTION; ++i)
+	{
+		if (!serverData.totalClients[i].connected)
+		{
+			// this client is not connected
+			availID = i;
+			break;
+		}
 	}
 
+	if (availID == -1)
+	{
+		// send a rej packet but i lazy do that now
+		return;
+	}
+
+	ClientInfo& newClient = serverData.totalClients[availID];
+
+	newClient.sessionID = availID;
+	newClient.ip = inet_ntoa(clientAddr.sin_addr);
+	newClient.port = ntohs(clientAddr.sin_port);
+	newClient.connected = true;
+
+	// default initialize ship data
+	// send back to the connecting player the reply
+	Packet replyPacket(REPLY_PLAYER_JOIN);
+	replyPacket << availID; // pack the ship's ID in 
+	//std::string message = replyPacket.ToString(); 
+	// send to the client
+	{
+		MessageData newMessage;
+		newMessage.commandID = replyPacket.id;
+		newMessage.sessionID = newClient.sessionID;
+		newMessage.data = replyPacket;
+
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(newMessage);
+	}
+
+	Packet newPlayerPacket(NEW_PLAYER_JOIN);
+	newPlayerPacket << newClient.sessionID; // i think i should be packing the ID of the new client??
+	//message = newPlayerPacket.ToString();
+
+	{
+		MessageData newMessage;
+		newMessage.commandID = newPlayerPacket.id;
+		newMessage.sessionID = newClient.sessionID;// sending to the current client's id which is i 
+		newMessage.data = newPlayerPacket;
+
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(newMessage);
+	}
 }

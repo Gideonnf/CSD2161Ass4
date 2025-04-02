@@ -24,10 +24,31 @@ uint32_t seqNum = 0;
 
 int NetworkClient::Init()
 {
+	std::ifstream serverConfigFile("serverConfig.txt");
+
+	if (!serverConfigFile.is_open())
+	{
+		std::cerr << "File not found!" << std::endl;
+	}
+
+	std::string fileText;
+
 	// read from text file
-	std::string host = "192.168.1.13"; // Server IP
-	std::string udpPortString = "9999"; // Server Port
-	std::string clientUDPPortString = "8888";
+	std::string host; // Server IP
+	std::string udpPortString; // Server Port
+	std::string clientUDPPortString;
+
+	std::getline(serverConfigFile, host);
+	std::getline(serverConfigFile, udpPortString);
+	std::getline(serverConfigFile, clientUDPPortString);
+
+	serverIP = host;
+	serverPort = udpPortString;
+
+	//std::cout << host << " " << udpPortString << " " << clientUDPPortString << std::endl;
+
+	serverConfigFile.close();
+
 
 	// -------------------------------------------------------------------------
 	// Start up Winsock, asking for version 2.2.
@@ -99,10 +120,22 @@ int NetworkClient::Init()
 	recvThread.detach();
 	senderThread = std::thread(&NetworkClient::SendMessages, this, udpSocket);
 	senderThread.detach();
+
+	Packet newPlayer(PLAYER_JOIN);
+	CreateMessage(newPlayer);
+	//{
+	//	std::lock_guard<std::mutex> lock(outMutex);
+	//	outgoingMessages.push(newPlayer.ToString());
+	//}
 }
 
 NetworkClient::~NetworkClient()
 {
+	// send disconnect message
+	// ok i cant do this here
+	//Packet dcPacket(PLAYER_DC);
+	//CreateMessage(dcPacket);
+
 	Shutdown();
 }
 
@@ -136,7 +169,7 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 {
 	while (connected)
 	{
-		std::string outMsg;
+		Packet outMsg;
 		{
 			std::lock_guard<std::mutex> lock(outMutex);
 			if (!outgoingMessages.empty())
@@ -147,7 +180,7 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 		}
 
 		// if its not an empty msg
-		if (!outMsg.empty())
+		if (outMsg.id != PACKET_ERROR)
 		{
 			// send it?? process it?? idk
 			//Read command ID and then construct the message 
@@ -155,26 +188,28 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 
 			unsigned int headerOffset = 0;
 
-			uint8_t commandID = static_cast<uint8_t>(outMsg[0]);
+			uint8_t commandID = static_cast<uint8_t>(outMsg.id);
 			memcpy(&buffer[0], &commandID, sizeof(commandID));
 			headerOffset += 1;
 
-			std::string messageStr = outMsg.substr(1);
+			// any other header stuff do here
 			
-			uint32_t fileLength = static_cast<uint32_t>(messageStr.size());
+			// get the file length/message length based on writePos
+			uint32_t fileLength = static_cast<uint32_t>(outMsg.writePos);
+			fileLength = htonl(fileLength);
 			memcpy(buffer + headerOffset, &fileLength, sizeof(fileLength));
+			headerOffset += sizeof(fileLength);
 
-			headerOffset += 4;
 
-
-			memcpy(buffer + headerOffset, messageStr.c_str(), fileLength);
-			headerOffset += fileLength;
+			// copy the body into the msg
+			memcpy(buffer + headerOffset, outMsg.body, outMsg.writePos);
+			headerOffset += outMsg.writePos;
 
 
 			sockaddr_in udpServerAddress = {};
 			udpServerAddress.sin_family = AF_INET;
 			udpServerAddress.sin_port = htons(9999);
-			inet_pton(AF_INET, "192.168.1.13", &udpServerAddress.sin_addr);
+			inet_pton(AF_INET, serverIP.c_str(), &udpServerAddress.sin_addr);
 
 			int sentBytes = sendto(clientSocket, buffer, headerOffset, 0,
 				reinterpret_cast<sockaddr*>(&udpServerAddress), sizeof(udpServerAddress));
@@ -209,24 +244,37 @@ void NetworkClient::ReceiveMessages(SOCKET udpSocket)
 
 		if (receivedBytes != SOCKET_ERROR)
 		{
-			buffer[receivedBytes] = '\0';
+			int offset = 0;
+			//buffer[receivedBytes] = '\0';
+			char msgID = buffer[0];
+			offset++;
+			
+			// if theres any other header stuff u need to take out cna do it here
 
-			// idk if we're going to process the string here into a message struct
-			// or leave it as a string then process it in gamestate_asteroids or smth
+			// get the file length
+			uint32_t msgLength;
+			memcpy(&msgLength, buffer + offset, sizeof(msgLength));
+			msgLength = ntohl(msgLength);
+			offset += sizeof(msgLength);
 
-			//{
-			//std::lock_guard<std::mutex> lock(inMutex);
-			//incomingMessages.push(buffer);
-			//}
+			// create the packet for game to process
+			Packet newPacket(static_cast<CMDID>(msgID));
+			newPacket.writePos = msgLength;
+			memcpy(newPacket.body, buffer + offset, msgLength);
+
+			{
+			std::lock_guard<std::mutex> lock(inMutex);
+			incomingMessages.push(newPacket);
+			}
 		}
 
 		Sleep(SLEEP_TIME);
 	}
 }
 
-std::string NetworkClient::GetIncomingMessage()
+Packet NetworkClient::GetIncomingMessage()
 {
-	std::string outMsg{};
+	Packet outMsg{};
 	{
 		std::lock_guard<std::mutex> lock(inMutex);
 		if (!incomingMessages.empty())
@@ -240,7 +288,7 @@ std::string NetworkClient::GetIncomingMessage()
 	return outMsg;
 }
 
-void NetworkClient::CreateMessage(std::string msg)
+void NetworkClient::CreateMessage(Packet msg)
 {
 	{
 		std::lock_guard<std::mutex> lock(outMutex);
