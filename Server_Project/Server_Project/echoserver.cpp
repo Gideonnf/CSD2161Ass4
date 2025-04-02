@@ -757,13 +757,13 @@ void HandleGetScores(SOCKET clientSocket)
 	for (const auto &score : topScores)
 	{
 		// Add player name length
-		uint32_t nameLength = static_cast<uint32_t>(score.playerName.length());
+		uint32_t nameLength = static_cast<uint32_t>(score.playerName.size()); // Use string size
 		uint32_t nameLengthNetworkOrder = htonl(nameLength);
 		memcpy(&message[messageSize], &nameLengthNetworkOrder, sizeof(nameLengthNetworkOrder));
 		messageSize += sizeof(nameLengthNetworkOrder);
 
 		// Add player name
-		memcpy(&message[messageSize], score.playerName.c_str(), nameLength);
+		memcpy(&message[messageSize], score.playerName.c_str(), nameLength); // Use c_str() to get raw pointer
 		messageSize += nameLength;
 
 		// Add score
@@ -775,6 +775,7 @@ void HandleGetScores(SOCKET clientSocket)
 	// Send high scores to client
 	send(clientSocket, message, messageSize, 0);
 }
+
 void HandleSubmitScore(char *buffer, SOCKET clientSocket)
 {
 	int offset = 1;  // Skip command ID
@@ -1273,7 +1274,9 @@ void HandleNewHighscore(const char *buffer, int recvLen, const sockaddr_in &clie
 	}
 
 	// Extract player name
-	std::string playerName(buffer + offset, nameLength);
+	char playerName[20] = {};
+	std::memcpy(playerName, buffer + offset, 20);
+	offset += 20;
 	offset += nameLength;
 
 	// Extract score

@@ -1,1 +1,15 @@
-﻿
+﻿  echoserver.cpp
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(309,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(359,26): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(404,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(424,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(442,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(461,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(479,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(497,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(515,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(533,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(557,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(562,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(580,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+  Server_Project.vcxproj -> C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\x64\Debug\Server_Project.exe
