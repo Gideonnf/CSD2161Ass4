@@ -30,6 +30,7 @@ struct ServerData
 	// power ups
 
 	// idk what else u want
+	bool gameRunning;
 	std::unordered_map<int, Bullet> activeBullets;
 	int nextBulletID = 0;
 };
