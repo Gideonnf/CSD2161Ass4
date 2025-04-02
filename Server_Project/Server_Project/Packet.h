@@ -13,7 +13,8 @@ enum CMDID : unsigned char {
 	BULLET_COLLIDE, // when bullet collides it gets destroyed, set Bullet active to false
 	BULLET_CREATED , // bullet fired
 	ASTEROID_CREATED ,
-	ASTEROID_DESTROYED ,
+	ASTEROID_DESTROYED,
+	SHIP_RESPAWN,
 	SHIP_MOVE,
 	SHIP_COLLIDE ,
 	REQ_HIGHSCORE ,

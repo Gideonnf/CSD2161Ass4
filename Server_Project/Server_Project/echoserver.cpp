@@ -35,9 +35,9 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <mutex>
 #include <queue>
 
-// Tell the Visual Studio linker to include the following library in linking.
-// Alternatively, we could add this file to the linker command-line parameters,
-// but including it in the source code simplifies the configuration.
+ // Tell the Visual Studio linker to include the following library in linking.
+ // Alternatively, we could add this file to the linker command-line parameters,
+ // but including it in the source code simplifies the configuration.
 #pragma comment(lib, "ws2_32.lib")
 #include <cstdio>
 #include <iostream>			   // cout, cerr
@@ -76,16 +76,17 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define RSP_GET_SCORES ((unsigned char)0x9)
 #define SLEEP_TIME 500
 
-
+#define ASTEROID_SCORE 100;
 
 // Add these new handler functions:
 void HandleSubmitScore(char *buffer, SOCKET clientSocket);
-void ProcessPlayerJoin(const sockaddr_in& clientAddr, const char* buffer, int recvLen);
+void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 void HandleGetScores(SOCKET clientSocket);
 void UDPSendingHandler();
 void UDPReceiveHandler(SOCKET udpListenerSocket);
 
 void ProcessBulletFired(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
+void ProcessBulletCollision(uint32_t bulletID, uint32_t targetID, uint8_t targetType);
 
 static int userCount = 0;
 
@@ -95,7 +96,7 @@ std::queue<MessageData> messageQueue;
 static ServerData serverData;
 
 SOCKET udpListenerSocket = INVALID_SOCKET;
-std::string filePath; 
+std::string filePath;
 std::mt19937 generator;
 std::uniform_real_distribution dis(0.0, 1.0);
 
@@ -106,7 +107,7 @@ int main()
 	// Get Port Number
 	std::string input;
 	// comment out for now cause idk how to do the UDP part yet
-	
+
 	std::cout << "Server UDP Port Number: ";
 	std::getline(std::cin, input);
 	std::string portStringUDP = input;
@@ -151,10 +152,10 @@ int main()
 	hints.ai_protocol = IPPROTO_TCP;	// TCP
 	// Create a passive socket that is suitable for bind() and listen().
 	hints.ai_flags = AI_PASSIVE;
-	
+
 	char host[MAX_STR_LEN];
 	gethostname(host, MAX_STR_LEN);
-	
+
 	// -------------------------------------------------------------------------
 	// Create a UDP socket and bind it to own network interface controller.
 	//
@@ -177,7 +178,7 @@ int main()
 
 	gethostname(host, MAX_STR_LEN);
 
-	addrinfo* info = nullptr;
+	addrinfo *info = nullptr;
 
 	info = nullptr;
 	errorCode = getaddrinfo(host, portStringUDP.c_str(), &hints, &info);
@@ -190,7 +191,7 @@ int main()
 
 	/* PRINT SERVER IP ADDRESS AND PORT NUMBER */
 	char serverIPAddr[MAX_STR_LEN];
-	struct sockaddr_in* serverAddress = reinterpret_cast<struct sockaddr_in*> (info->ai_addr);
+	struct sockaddr_in *serverAddress = reinterpret_cast<struct sockaddr_in *> (info->ai_addr);
 	inet_ntop(AF_INET, &(serverAddress->sin_addr), serverIPAddr, INET_ADDRSTRLEN);
 	getnameinfo(info->ai_addr, static_cast <socklen_t> (info->ai_addrlen), serverIPAddr, sizeof(serverIPAddr), nullptr, 0, NI_NUMERICHOST);
 	std::cout << std::endl;
@@ -255,7 +256,7 @@ int main()
 				int offset = 0;
 				std::memset(buffer, 0, sizeof(buffer));
 
-				const MessageData& msg = messages.front();
+				const MessageData &msg = messages.front();
 				char msgID = msg.data.id; // either msg.commandID or msg.data.id
 
 				//std::string messageBody = msg.data.substr(1); // get rid of the 1st char as it's the commandID
@@ -286,11 +287,11 @@ int main()
 					// get the ip of the target client
 					inet_pton(AF_INET, serverData.totalClients[msg.sessionID].ip.c_str(), &otherAddr.sin_addr);
 					// END OF GETTING CLIENT SOCKET
-					
+
 					// body of the message
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
 					offset += msg.data.writePos;
-					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
+					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&otherAddr, sizeof(otherAddr));
 					break;
 				}
 				case NEW_PLAYER_JOIN:
@@ -305,7 +306,7 @@ int main()
 						// in this case, sessionID of message is used to represent who is joining
 						if (i == msg.sessionID) continue; // dont send to the new player joining
 
-						ClientInfo& client = serverData.totalClients[i];
+						ClientInfo &client = serverData.totalClients[i];
 						if (!client.connected) continue; // skip unconnected client slots
 
 						sockaddr_in clientAddr;
@@ -321,7 +322,7 @@ int main()
 						}
 
 						// send it
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
 					}
 					break;
 				}
@@ -370,7 +371,7 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 		int recvAddrLen = sizeof(recvAddr);
 
 		// receive from client
-		int recvLen = recvfrom(udpListenerSocket, buffer, sizeof(buffer), 0, (struct sockaddr*)&recvAddr, &recvAddrLen);
+		int recvLen = recvfrom(udpListenerSocket, buffer, sizeof(buffer), 0, (struct sockaddr *)&recvAddr, &recvAddrLen);
 
 		if (recvLen == SOCKET_ERROR)
 		{
@@ -406,13 +407,32 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				break;
 			case NEW_PLAYER_JOIN:
 				break;
-			case BULLET_COLLIDE:
+			case BULLET_COLLIDE:    
+				if (recvLen < 9) break; // Ensure buffer contains enough bytes (1 byte msgID + 8 bytes data)
+
+				uint32_t bulletID, targetID;
+				uint8_t targetType;
+
+				std::memcpy(&bulletID, buffer + 1, sizeof(uint32_t));
+				std::memcpy(&targetID, buffer + 5, sizeof(uint32_t));
+				std::memcpy(&targetType, buffer + 9, sizeof(uint8_t));
+
+				ProcessBulletCollision(bulletID, targetID, targetType);
 				break;
 			case BULLET_CREATED:
+				ProcessBulletFired(recvAddr, buffer, recvLen);
 				break;
 			case ASTEROID_CREATED:
 				break;
 			case ASTEROID_DESTROYED:
+				break;
+			case SHIP_RESPAWN:
+				if (recvLen < 5) break; // Ensure buffer has enough data
+
+				uint32_t playerID;
+				std::memcpy(&playerID, buffer + 1, sizeof(uint32_t));
+
+				RespawnShip(playerID);
 				break;
 			case SHIP_COLLIDE:
 				break;
@@ -422,7 +442,7 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				break;
 			case GAME_START:
 				break;
-			case PACKET_ERROR:		
+			case PACKET_ERROR:
 				break;
 			}
 		}
@@ -504,7 +524,7 @@ void HandleSubmitScore(char *buffer, SOCKET clientSocket)
 	// Send response to client
 	send(clientSocket, message, messageSize, 0);
 }
-void ProcessPlayerJoin( const sockaddr_in& clientAddr, const char* buffer,  int recvLen)
+void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
 {
 	int32_t availID = -1;
 	for (int i = 0; i < MAX_CONNECTION; ++i)
@@ -523,7 +543,7 @@ void ProcessPlayerJoin( const sockaddr_in& clientAddr, const char* buffer,  int 
 		return;
 	}
 
-	ClientInfo& newClient = serverData.totalClients[availID];
+	ClientInfo &newClient = serverData.totalClients[availID];
 
 	newClient.sessionID = availID;
 	newClient.ip = inet_ntoa(clientAddr.sin_addr);
@@ -609,4 +629,108 @@ void ProcessBulletFired(const sockaddr_in &clientAddr, const char *buffer, int r
 
 	std::lock_guard<std::mutex> lock(lockMutex);
 	messageQueue.push(newMessage);
+}
+void ProcessBulletCollision(uint32_t bulletID, uint32_t targetID, uint8_t targetType)
+{
+	// Validate IDs exist
+	if (serverData.activeBullets.find(bulletID) == serverData.activeBullets.end())
+	{
+		return; // Bullet doesn't exist
+	}
+
+	Bullet &bullet = serverData.activeBullets[bulletID];
+	uint32_t shooterID = bullet.ownerID;
+
+	// Handle collision based on target type
+	if (targetType == TARGET_TYPE_ASTEROID)
+	{
+		// Check if asteroid exists
+		auto it = std::find_if(serverData.asteroids.begin(), serverData.asteroids.end(),
+			[targetID](const Asteroid &asteroid) { return asteroid.ID == targetID; });
+
+		if (it == serverData.asteroids.end())
+		{
+			return; // Asteroid doesn't exist
+		}
+
+
+		Asteroid &asteroid = serverData.asteroids[targetID];
+
+		// Mark bullet as inactive
+		bullet.active = false;
+
+		// Handle asteroid destruction
+
+			// Asteroid destroyed
+		asteroid.active = false;
+
+		// Award points to the shooter
+		if (shooterID < MAX_CONNECTION && serverData.totalClients[shooterID].connected)
+		{
+			serverData.totalClients[shooterID].playerShip.score += ASTEROID_SCORE;
+		}
+
+
+		// Create asteroid destroyed message
+		Packet asteroidDestroyedPacket(ASTEROID_DESTROYED);
+		asteroidDestroyedPacket << targetID;
+		asteroidDestroyedPacket << shooterID;  // Who destroyed it
+
+		// Queue the message
+		MessageData asteroidMsg;
+		asteroidMsg.commandID = asteroidDestroyedPacket.id;
+		asteroidMsg.sessionID = -1; // Broadcast to all
+		asteroidMsg.data = asteroidDestroyedPacket;
+
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(asteroidMsg);
+	}
+
+	// Create bullet collision message in all cases
+	Packet bulletCollidePacket(BULLET_COLLIDE);
+	bulletCollidePacket << static_cast<int32_t>(bulletID);
+	bulletCollidePacket << static_cast<int32_t>(targetID);
+	bulletCollidePacket << static_cast<int32_t>(targetType);
+
+	// Queue the message
+	MessageData bulletMsg;
+	bulletMsg.commandID = bulletCollidePacket.id;
+	bulletMsg.sessionID = -1; // Broadcast to all
+	bulletMsg.data = bulletCollidePacket;
+
+	std::lock_guard<std::mutex> lock(lockMutex);
+	messageQueue.push(bulletMsg);
+}
+
+// Helper function to respawn a ship
+void RespawnShip(uint32_t playerID)
+{
+	if (playerID >= MAX_CONNECTION || !serverData.totalClients[playerID].connected)
+	{
+		return;
+	}
+
+	ClientInfo &player = serverData.totalClients[playerID];
+
+	// Reset ship properties
+	player.playerShip.xPos = 0.0f;  // Spawn in center
+	player.playerShip.yPos = 0.0f;
+	player.playerShip.vel_x = 0.0f;
+	player.playerShip.vel_y = 0.0f;
+	player.playerShip.vel_server_x = 0.0f;
+	player.playerShip.vel_server_y = 0.0f;
+
+	// Create and broadcast ship respawn message
+	Packet respawnPacket(SHIP_RESPAWN);
+	respawnPacket << playerID;
+	respawnPacket << player.playerShip.xPos << player.playerShip.yPos;
+
+	// Queue the message
+	MessageData respawnMsg;
+	respawnMsg.commandID = respawnPacket.id;
+	respawnMsg.sessionID = -1; // Broadcast to all
+	respawnMsg.data = respawnPacket;
+
+	std::lock_guard<std::mutex> lock(lockMutex);
+	messageQueue.push(respawnMsg);
 }
