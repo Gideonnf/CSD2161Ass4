@@ -1154,6 +1154,17 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		}
 		//ProcessNewAsteroid(msg, data);
 		break;
+	case ASTEROID_UPDATE:
+	{
+		int numOfAsteroids;
+		msg >> numOfAsteroids;
+		for (int i = 0; i < numOfAsteroids; ++i)
+		{
+
+		}
+
+		break;
+	}
 	case BULLET_CREATED:
 	{
 		// "Time:" << NetworkClient::Instance().GetTimeDiff() << ' ' <<
