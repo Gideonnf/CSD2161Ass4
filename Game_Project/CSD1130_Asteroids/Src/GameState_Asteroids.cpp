@@ -737,6 +737,7 @@ GameObjInst* bulletObjInstCreate(AEVec2* pPos, AEVec2* pVel, float dir, uint32_t
 	}
 	pInst->pObject = gameData.sGameObjList + TYPE_BULLET;
 	pInst->flag = FLAG_ACTIVE;
+	pInst->active = true;
 	AEVec2 scale;
 	AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
 	pInst->scale = scale;

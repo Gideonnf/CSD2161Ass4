@@ -20,6 +20,8 @@
 
 
 uint32_t seqNum = 0;
+sockaddr_in udpClientAddress{};
+sockaddr_in udpServerAddress{};
 
 
 int NetworkClient::Init()
@@ -96,10 +98,14 @@ int NetworkClient::Init()
 		return RETURN_CODE_4;
 	}
 
-	sockaddr_in udpClientAddress{};
 	udpClientAddress.sin_family = AF_INET;
 	udpClientAddress.sin_addr.s_addr = INADDR_ANY;
 	udpClientAddress.sin_port = htons(std::stoi(clientUDPPortString));
+
+	udpServerAddress.sin_family = AF_INET;
+	udpServerAddress.sin_port = htons(std::stoi(udpPortString));
+	inet_pton(AF_INET, serverIP.c_str(), &udpServerAddress.sin_addr);
+
 
 	if (bind(udpSocket, reinterpret_cast<sockaddr*>(&udpClientAddress), sizeof(udpClientAddress)) == SOCKET_ERROR)
 	{
@@ -110,11 +116,6 @@ int NetworkClient::Init()
 	}
 
 	connected = true;
-
-	sockaddr_in udpServerAddress{};
-	udpServerAddress.sin_family = AF_INET;
-	udpServerAddress.sin_port = htons(std::stoi(udpPortString));
-	inet_pton(udpServerAddress.sin_family, host.c_str(), &udpServerAddress.sin_addr);
 
 	NetworkClient::Instance().gameStartTime = std::chrono::high_resolution_clock::now();
 
@@ -207,12 +208,6 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 			// copy the body into the msg
 			memcpy(buffer + headerOffset, outMsg.body, outMsg.writePos);
 			headerOffset += outMsg.writePos;
-
-
-			sockaddr_in udpServerAddress = {};
-			udpServerAddress.sin_family = AF_INET;
-			udpServerAddress.sin_port = htons(9999);
-			inet_pton(AF_INET, serverIP.c_str(), &udpServerAddress.sin_addr);
 
 			int sentBytes = sendto(clientSocket, buffer, headerOffset, 0,
 				reinterpret_cast<sockaddr*>(&udpServerAddress), sizeof(udpServerAddress));
