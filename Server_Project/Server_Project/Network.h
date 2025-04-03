@@ -3,7 +3,7 @@
 #include "Game.h"
 
 #define MAX_CONNECTION 4
-#define MAX_ASTEROIDS 50
+#define MAX_ASTEROIDS 96
 
 struct ClientInfo
 {
@@ -32,6 +32,7 @@ struct ServerData
 	Asteroid totalAsteroids[MAX_ASTEROIDS];
 
 	int activeAsteroids = 0;
+	int numOfAsteroids = 0;
 	// power ups
 
 	// idk what else u want

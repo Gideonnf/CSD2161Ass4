@@ -172,17 +172,21 @@ Asteroid RandomiseAsteroid(float min_xPos, float max_xPos, float min_yPos, float
 	newAsteroid.active = true;
 	newAsteroid.creationTime = std::chrono::steady_clock::now();
 
-	for (int i = 0; i < MAX_ASTEROIDS; ++i)
-	{
-		if (serverData.totalAsteroids[i].active == false)
-		{
-			newAsteroid.ID = i;
-			serverData.totalAsteroids[i] = newAsteroid;
-			break;
-		}
-	}
+	//for (int i = 0; i < MAX_ASTEROIDS; ++i)
+	//{
+	//	if (serverData.totalAsteroids[i].active == false)
+	//	{
+	//		newAsteroid.ID = i;
+	//		serverData.totalAsteroids[i] = newAsteroid;
+	//		break;
+	//	}
+	//}
+
+	newAsteroid.ID = serverData.activeAsteroids;
+	serverData.totalAsteroids[serverData.activeAsteroids] = newAsteroid;
 
 	serverData.activeAsteroids++;
+	serverData.numOfAsteroids++;
 
 	return newAsteroid;
 
@@ -325,7 +329,10 @@ int main()
 	const auto printInterval = std::chrono::duration<double>(1.0); // every 1 s? idk for now
 
 	auto lastWaveTime = std::chrono::steady_clock::now();
-	const auto waveInterval = std::chrono::duration<double>(10.0); // every 2s
+	const auto waveInterval = std::chrono::duration<double>(10.0); // every 10?
+
+	auto startTime = std::chrono::steady_clock::now();
+	const auto gameTime = std::chrono::duration<double>(120.0);
 
 	serverData.gameRunning = false;
 
@@ -620,81 +627,6 @@ int main()
 				// pop the message im using
 				messages.pop();
 			}
-		
-#pragma region STATE_UPDATE
-
-			//// i should really store total connected clients os i dont have to keep looping this shit
-			//// loop through every ship
-			//std::vector<int> connectedClients;
-			//for (int i = 0; i < MAX_CONNECTION; ++i)
-			//{
-			//	if (serverData.totalClients[i].connected)
-			//		connectedClients.push_back(i);
-			//}
-
-			//// sending positions only really needed if theres more than 1
-			//if (connectedClients.size() > 1)
-			//{
-			//	// send current game state to all clients (i.e all ship's current positions etc, and later on asteroids/bullets as well)
-			//	Packet stateUpdate(STATE_UPDATE);
-
-			//	stateUpdate << (uint32_t)connectedClients.size();
-
-			//	for (int i = 0; i < connectedClients.size(); ++i)
-			//	{
-			//		stateUpdate << connectedClients[i];
-			//		ClientInfo& info = serverData.totalClients[connectedClients[i]];
-			//		stateUpdate << info.playerShip.xPos;
-			//		stateUpdate << info.playerShip.yPos;
-			//		stateUpdate << info.playerShip.vel_x;
-			//		stateUpdate << info.playerShip.vel_y;
-			//		stateUpdate << info.playerShip.dirCur;
-			//	}
-
-
-			//	char updateBuffer[MAX_STR_LEN];
-			//	int updateOffset = 0;
-			//	std::memset(updateBuffer, 0, MAX_STR_LEN);
-
-			//	updateBuffer[0] = stateUpdate.id;
-			//	updateOffset++;
-
-			//	// Any other header stuff do here
-
-			//	// add the length of the message
-			//	uint32_t messageLength = static_cast<uint32_t>(stateUpdate.writePos); // writePos represents how much was written
-			//	messageLength = htonl(messageLength);
-			//	std::memcpy(updateBuffer + updateOffset, &messageLength, sizeof(messageLength));
-			//	updateOffset += sizeof(messageLength);
-
-			//	// now add the body of the packet
-			//	std::memcpy(updateBuffer + updateOffset, stateUpdate.body, stateUpdate.writePos);
-			//	updateOffset += stateUpdate.writePos;
-
-
-			//	for (int i = 0; i < MAX_CONNECTION; ++i)
-			//	{
-			//		ClientInfo& client = serverData.totalClients[i];
-			//		if (!client.connected) continue; // skip unconnected client slots
-
-			//		sockaddr_in clientAddr;
-			//		memset(&clientAddr, 0, sizeof(clientAddr));
-			//		clientAddr.sin_family = AF_INET;
-			//		clientAddr.sin_port = htons(client.port);
-
-			//		// convert IP string to binary format
-			//		if (inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr) <= 0)
-			//		{
-			//			// invalid IP
-			//			continue;
-			//		}
-
-			//		// send it
-			//		sendto(udpListenerSocket, updateBuffer, updateOffset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
-			//	}
-			//}
-#pragma endregion
-
 		}
 
 		//Sleep(SLEEP_TIME);
@@ -767,6 +699,35 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 			case CLIENT_REQ_HIGHSCORE:
 				ClientHandleHighscoreRequest(recvAddr, buffer, recvLen);
 				break;
+			case ASTEROID_DESTROYED:
+			{
+				int offset = 1;
+				// get rid of header data
+				uint32_t msgLength;
+				std::memcpy(&msgLength, buffer + offset, sizeof(msgLength));
+				msgLength = ntohl(msgLength);
+				offset += sizeof(msgLength);
+
+				Packet asteroidPkt(ASTEROID_DESTROYED);
+				asteroidPkt.writePos += msgLength;
+				std::memcpy(asteroidPkt.body, buffer + offset, msgLength);
+
+				int asteroidID;
+				asteroidPkt >> asteroidID;
+
+				std::cout << "Destryoing " << asteroidID << std::endl;
+				if (asteroidID > MAX_ASTEROIDS) break; // not suppose to be more
+
+				if (serverData.totalAsteroids[asteroidID].active)
+				{
+					serverData.totalAsteroids[asteroidID].active = false;
+					serverData.numOfAsteroids--;
+				}
+
+				//std::cout << "Total Asteroid : " << serverData.activeAsteroids << std::endl;
+
+				break;
+			}
 
 			default:
 				ForwardPacket(recvAddr, buffer, recvLen);
@@ -1012,7 +973,7 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 
 	}
 
-	updateAsteroids << serverData.activeAsteroids;
+	updateAsteroids << serverData.numOfAsteroids;
 	// send any asteroids that exist in the server
 	for (int i = 0; i < MAX_ASTEROIDS; ++i)
 	{

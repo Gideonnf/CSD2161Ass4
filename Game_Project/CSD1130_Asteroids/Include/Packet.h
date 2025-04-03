@@ -409,32 +409,33 @@ inline Packet& operator<< (Packet& packet, const std::string& data)
 }
 
 template <>
-inline Packet& operator>>(Packet& packet, std::string& data)
+inline Packet &operator>>(Packet &packet, std::string &data)
 {
-	//  i dont want to deal with string for now
-	// reading out of bounds
-	if (packet.readPos + 19 > packet.writePos)
-	{
-		return packet;
-	}
+	// Ensure that we don't read past the available data
+	//if (packet.readPos + 20 > sizeof(packet.body))
+	//{
+	//	// Handle error or return early if not enough data is available
+	//	return packet;
+	//}
 
 	// Create a buffer to store up to 20 characters
-	char buffer[20];  // 19 chars + 1 for null-terminator
+	char buffer[21];  // 20 chars + 1 for null-terminator
 
-	// Copy the data into the buffer, ensuring we don't exceed 20 chars
-	std::memcpy(buffer, packet.body + packet.readPos, 19);
+	// Copy the data into the buffer (ensure not to exceed 20 chars)
+	std::memcpy(buffer, packet.body + packet.readPos, 20);
 
 	// Null-terminate the string (in case it's shorter than 20 characters)
 	buffer[20] = '\0';
 
-	// Convert buffer into a string (this truncates if more than 20 chars)
+	// Convert the buffer into a string (this truncates if more than 20 chars)
 	data = std::string(buffer);
 
-	// Update read position in the packet
+	// Update the read position in the packet
 	packet.readPos += 20;
 
 	return packet;
 }
+
 #pragma endregion
 
 
