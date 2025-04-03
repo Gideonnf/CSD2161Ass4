@@ -118,6 +118,7 @@ std::mutex lockMutex;
 std::queue<MessageData> messageQueue;
 
 static ServerData serverData;
+bool gameOver = false;
 
 SOCKET udpListenerSocket = INVALID_SOCKET;
 std::string filePath;
@@ -185,6 +186,7 @@ Asteroid RandomiseAsteroid(float min_xPos, float max_xPos, float min_yPos, float
 
 	newAsteroid.ID = serverData.activeAsteroids;
 	serverData.totalAsteroids[serverData.activeAsteroids] = newAsteroid;
+	std::cout << "Creating Asteroid " << newAsteroid.ID << std::endl;
 
 	serverData.activeAsteroids++;
 	serverData.numOfAsteroids++;
@@ -349,7 +351,7 @@ int main()
 			if (serverData.activeAsteroids >= (MAX_ASTEROIDS - 1) && serverData.numOfAsteroids <= 0)
 			{
 				// game over
-				Packet gameOver(GAME_OVER);
+				Packet gameOverPkt(GAME_OVER);
 				int winnerID = 0;
 				//get the highest score player
 				for (int i = 1; i < MAX_CONNECTION; ++i)
@@ -360,14 +362,21 @@ int main()
 					}
 				}
 
-				gameOver << winnerID;
+				gameOverPkt << winnerID;
 
+				if (gameOver == false)
+				{
+					std::string playerName = "Player_" + std::to_string(winnerID);
+					UpdateHighScores(playerName, serverData.totalClients[winnerID].playerShip.score);
+					SaveHighScores();
+					gameOver = true;
+				}
 				// send it to client
 				{
 					MessageData newMessage;
-					newMessage.commandID = gameOver.id;
+					newMessage.commandID = gameOverPkt.id;
 					newMessage.sessionID = -1;// sending to the current client's id which is i 
-					newMessage.data = gameOver;
+					newMessage.data = gameOverPkt;
 
 					std::lock_guard<std::mutex> lock(lockMutex);
 					messageQueue.push(newMessage);
@@ -735,11 +744,11 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				int asteroidID;
 				asteroidPkt >> asteroidID;
 
-				//std::cout << "Destryoing " << asteroidID << std::endl;
 				if (asteroidID > MAX_ASTEROIDS) break; // not suppose to be more
 
 				if (serverData.totalAsteroids[asteroidID].active)
 				{
+					std::cout << "Destroying Asteroid " << asteroidID << std::endl;
 					serverData.totalAsteroids[asteroidID].active = false;
 					serverData.numOfAsteroids--;
 				}
