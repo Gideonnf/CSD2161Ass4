@@ -406,22 +406,10 @@ void GameStateAsteroidsUpdate(void)
 			vel.x = BULLET_SPEED * cosf(gameData.spShip[gameData.currID]->dirCurr);
 			vel.y = BULLET_SPEED * sinf(gameData.spShip[gameData.currID]->dirCurr);
 			AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-			GameObjInst *bulletObj = bulletObjInstCreate(&pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
-			unsigned int bulletID{};
-
-			for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
-			{
-				GameObjInst *pInst = gameData.sGameObjInstList + i;
-				if (pInst == bulletObj)
-				{
-					bulletID = i;
-					break;
-				}
-			}
-
+			GameObjInst* bulletObj = bulletObjInstCreate(&pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
 			{
 				Packet pck(CMDID::BULLET_CREATED);
-				pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << bulletID << pos.x << pos.y << vel.x << vel.y << gameData.spShip[gameData.currID]->dirCurr;
+				pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << bulletObj->serverID << pos.x << pos.y << vel.x << vel.y << gameData.spShip[gameData.currID]->dirCurr;
 				NetworkClient::Instance().CreateMessage(pck);
 			}
 
@@ -736,6 +724,7 @@ GameObjInst *bulletObjInstCreate(AEVec2 *pPos, AEVec2 *pVel, float dir, uint32_t
 	if (id >= BULLET_ID_MAX)
 	{
 		pInst = gameData.sGameObjInstList + 4 + (gameData.currID * BULLET_ID_MAX) + gameData.bulletIDCount;
+		pInst->serverID = 4 + (gameData.currID * BULLET_ID_MAX) + gameData.bulletIDCount;
 		if (++gameData.bulletIDCount >= BULLET_ID_MAX)
 		{
 			gameData.bulletIDCount = 0;
@@ -744,6 +733,7 @@ GameObjInst *bulletObjInstCreate(AEVec2 *pPos, AEVec2 *pVel, float dir, uint32_t
 	else // valid ID
 	{
 		pInst = gameData.sGameObjInstList + id;
+		pInst->serverID = id;
 	}
 	pInst->pObject = gameData.sGameObjList + TYPE_BULLET;
 	pInst->flag = FLAG_ACTIVE;
@@ -838,7 +828,7 @@ void UpdateGO()
 /// </summary>
 void CheckGOCollision()
 {
-	return; // no collision for now
+	//return; // no collision for now
 	for (uint32_t i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
 		GameObjInst *pInst_1 = gameData.sGameObjInstList + i;
@@ -860,6 +850,8 @@ void CheckGOCollision()
 				switch (pInst_2->pObject->type)
 				{
 				case TYPE_BULLET:
+					if (pInst_2->serverID < 4 + (gameData.currID * BULLET_ID_MAX) || pInst_2->serverID > 4 + ((gameData.currID + 1) * BULLET_ID_MAX))
+						break;
 					if (CollisionIntersection_RectRect(pInst_1->boundingBox, pInst_1->velCurr, pInst_2->boundingBox, pInst_2->velCurr, firstTimeOfCollision))
 					{
 						// Destroy both the bullet and asteroid after
@@ -905,6 +897,13 @@ void CheckGOCollision()
 							//	"Time:" << timestamp << ' ' <<
 							//	"AsteroidID:" << i;
 							NetworkClient::Instance().CreateMessage(pck);
+
+							Packet pck2(CMDID::SHIP_MOVE);
+							pck2 << gameData.currID << NetworkClient::Instance().GetTimeDiff() << 0 <<
+								gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
+								gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
+								gameData.spShip[gameData.currID]->dirCurr;
+							NetworkClient::Instance().CreateMessage(pck2);
 						}
 
 					}
