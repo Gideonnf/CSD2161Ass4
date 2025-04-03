@@ -286,20 +286,25 @@ void GameStateAsteroidsInit(void)
 	gameData.textList[3].Font = &textFont;
 	gameData.textList[3].str = "Press B to go back to menu";
 
-	AEVec2Set(&gameData.textList[4].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f));
-	gameData.textList[4].textSize = 20;
-	gameData.textList[4].Font = &textFont;
-	gameData.textList[4].str = "Score: ";
+	AEVec2Set(&gameData.playerTextScores[0].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f));
+	gameData.playerTextScores[0].textSize = 20;
+	gameData.playerTextScores[0].Font = &textFont;
+	gameData.playerTextScores[0].str = "Player 0: ";
 
-	AEVec2Set(&gameData.textList[5].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - 20);
-	gameData.textList[5].textSize = 20;
-	gameData.textList[5].Font = &textFont;
-	gameData.textList[5].str = "Score: ";
+	AEVec2Set(&gameData.playerTextScores[1].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - 20);
+	gameData.playerTextScores[1].textSize = 20;
+	gameData.playerTextScores[1].Font = &textFont;
+	gameData.playerTextScores[1].str = "Player 1: ";
 
-	AEVec2Set(&gameData.textList[6].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - 40);
-	gameData.textList[6].textSize = 20;
-	gameData.textList[6].Font = &textFont;
-	gameData.textList[6].str = "Score: ";
+	AEVec2Set(&gameData.playerTextScores[2].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - 40);
+	gameData.playerTextScores[2].textSize = 20;
+	gameData.playerTextScores[2].Font = &textFont;
+	gameData.playerTextScores[2].str = "Player 2: ";
+
+	AEVec2Set(&gameData.playerTextScores[3].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - 60);
+	gameData.playerTextScores[3].textSize = 20;
+	gameData.playerTextScores[3].Font = &textFont;
+	gameData.playerTextScores[3].str = "Player 3: ";
 
 
 	// create the main ship
@@ -329,7 +334,12 @@ void GameStateAsteroidsInit(void)
 
 
 	// reset the score and the number of ships
-	gameData.sScore = 0;
+	//gameData.sScore = 0;
+	for (int i = 0; i < 4; ++i)
+	{
+		gameData.playerScores[i] = 0;
+	}
+
 	accumulatedTime = 0.0;
 
 	gameOver = false;
@@ -575,47 +585,56 @@ void GameStateAsteroidsDraw(void)
 	}
 
 	// Handles the rendering of texture objects
-	for (int i = 0; i < 7; ++i)
+	for (int i = 0; i < 4; ++i)
 	{
 		// Specific checks so  certain text dont render until required
 		if (!gameOver && (i == 1 || i == 2 || i == 3)) continue;
 
-		if (gameOver)
-		{
-			if (gameData.sScore >= 5000)
-			{
-				gameData.textList[2].str = "GAME OVER! YOU WON";
+		//if (gameOver)
+		//{
+		//	if (gameData.sScore >= 5000)
+		//	{
+		//		gameData.textList[2].str = "GAME OVER! YOU WON";
 
-			}
-		}
+		//	}
+		//}
 
 		// 0 is for score
 		// 1 2 and 3 is for game over texts
 		// They need to pass in the values when rendering
 		if (i == 1 || i == 2 || i == 3)
-			snprintf(strBuffer, sizeof(strBuffer), "%s", gameData.textList[i].str);
+			snprintf(strBuffer, sizeof(strBuffer), "%s", gameData.textList[i].str.c_str());
 		else if (i == 0)
-			snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sScore);
-		else if (i == 4)
-			snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sp2Score);
-		else if (i == 5)
-			snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sp3Score);
-		else if (i == 6)
-			snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sp4Score);
+			snprintf(strBuffer, sizeof(strBuffer), "%s", gameData.textList[i].str.c_str());
+		//else if (i == 4)
+		//	snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sp2Score);
+		//else if (i == 5)
+		//	snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sp3Score);
+		//else if (i == 6)
+		//	snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sp4Score);
 
 		// Render the text object after assigning the string val
 		RenderText(&gameData.textList[i], fontSize, strBuffer);
+	}
+
+	for (int i = 0; i < 4; ++i)
+	{
+		snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.playerTextScores[i].str.c_str(), gameData.playerScores[i]);
+
+		// Render the text object after assigning the string val
+		RenderText(&gameData.playerTextScores[i], fontSize, strBuffer);
+
 	}
 
 
 	// Updates the console print of the score and lives when value is changed
 	if (gameData.onValueChange)
 	{
-		sprintf_s(strBuffer, "Score: %d", gameData.sScore);
-		//AEGfxPrint(10, 10, (u32)-1, strBuffer);
-		printf("%s \n", strBuffer);
-		//AEGfxPrint(600, 10, (u32)-1, strBuffer);
-		printf("%s \n", strBuffer);
+		//sprintf_s(strBuffer, "Score: %d", gameData.sScore);
+		////AEGfxPrint(10, 10, (u32)-1, strBuffer);
+		//printf("%s \n", strBuffer);
+		////AEGfxPrint(600, 10, (u32)-1, strBuffer);
+		//printf("%s \n", strBuffer);
 
 		// Set to false so that it doesn't flood the console with print messages
 		gameData.onValueChange = false;
@@ -886,10 +905,10 @@ void CheckGOCollision()
 						if (!gameOver)
 						{
 							// increment score
-							gameData.sScore += 100;
+							gameData.playerScores[gameData.currID] += 100;
 							gameData.onValueChange = true;
-							if (gameData.sScore >= 5000)
-								gameOver = true;
+						/*	if (gameData.sScore >= 5000)
+								gameOver = true;*/
 						}
 
 						{
@@ -899,7 +918,7 @@ void CheckGOCollision()
 
 							Packet pck(CMDID::BULLET_COLLIDE);
 
-							pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << j << i << gameData.sScore;
+							pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << gameData.playerScores[gameData.currID];
 							//  "Time:" << timestamp << ' ' <<
 							//	"BulletID:" << j << ' ' <<
 							//	"AsteroidID:" << i << ' ' <<
@@ -1088,6 +1107,8 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 		gameData.spShip[clientID]->active = true;
 		gameData.spShip[clientID]->serverID = clientID;
 		gameData.currID = clientID;
+		std::string str = "Player " + std::to_string(clientID);
+		gameData.textList[0].str = str;
 
 		uint8_t playerExist;
 		msg >> playerExist;
@@ -1376,8 +1397,6 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 		msg >> numOfPlayers; // Read the number of high scores
 
 
-		std::vector<PlayerScore> currentScores; // Adjust if score type differs
-		std::vector<uint32_t *> otherPlayerScores = { &gameData.sp2Score, &gameData.sp3Score, &gameData.sp4Score };
 		int index{};
 		for (uint16_t i = 0; i < numOfPlayers; ++i)
 		{
@@ -1385,18 +1404,16 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 			uint32_t score;
 			int playerID;
 			msg >> playerID >> score;
-			currentScores.emplace_back("player " + std::to_string(playerID), score);
+			//currentScores.emplace_back("player " + std::to_string(playerID), score);
+
 			if (playerID == gameData.currID)
 			{
 				// This is the local player; ignore and don't assign to sp2/sp3/sp4
 				continue;
 			}
 
-			if (index < otherPlayerScores.size())
-			{
-				*otherPlayerScores[index] = score; // Assign score to one of sp2, sp3, sp4
-				++index;
-			}
+			if (playerID < 4)
+				gameData.playerScores[playerID] = score;
 		}
 
 		// Print the received high scores
@@ -1406,11 +1423,11 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 			std::cout << entry.playerName << ": " << entry.score << " points\n";
 		}
 
-		std::cout << "Current Scores:\n";
+	/*	std::cout << "Current Scores:\n";
 		for (const auto& entry : currentScores)
 		{
 			std::cout << entry.playerName << ": " << entry.score << " points\n";
-		}
+		}*/
 		break;
 	}
 	break;

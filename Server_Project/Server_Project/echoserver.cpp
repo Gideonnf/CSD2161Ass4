@@ -728,7 +728,27 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 
 				break;
 			}
+			case BULLET_COLLIDE:
+			{
+				int offset = 1;
+				// get rid of header data
+				uint32_t msgLength;
+				std::memcpy(&msgLength, buffer + offset, sizeof(msgLength));
+				msgLength = ntohl(msgLength);
+				offset += sizeof(msgLength);
 
+				Packet bulletCollide(BULLET_COLLIDE);
+				bulletCollide.writePos += msgLength;
+				std::memcpy(bulletCollide.body, buffer + offset, msgLength);
+				uint64_t timeDiff;
+				int shipID;
+				uint32_t score;
+
+				bulletCollide >> shipID >> timeDiff >> score;
+				serverData.totalClients[shipID].playerShip.score = score;
+
+				break;
+			}
 			default:
 				ForwardPacket(recvAddr, buffer, recvLen);
 				break;
