@@ -107,6 +107,8 @@ void ProcessNewPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int
 void ProcessGameStart(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 void ProcessPacketError(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 
+void ClientHandleHighscoreRequest(const sockaddr_in &clientAddr);
+
 void RespawnShip(uint32_t playerID);
 
 static int userCount = 0;
@@ -544,6 +546,47 @@ int main()
 
 					break;
 				}
+				case CLIENT_REQ_HIGHSCORE:
+				{
+					// Assuming `GetHighScores()` returns a vector of high scores
+
+					Packet highScorePacket(CLIENT_REQ_HIGHSCORE); // Assuming a HIGHSCORE_RESPONSE enum exists
+					highScorePacket << (int)topScores.size();
+
+					for (auto &score : topScores)
+					{
+						highScorePacket << score.score;
+					}
+
+					// Find the requesting client
+					ClientInfo &client = serverData.totalClients[msg.sessionID];
+
+					sockaddr_in clientAddr;
+					memset(&clientAddr, 0, sizeof(clientAddr));
+					clientAddr.sin_family = AF_INET;
+					clientAddr.sin_port = htons(client.port);
+					inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+					// Prepare buffer
+					char buffer[MAX_STR_LEN];
+					int offset = 0;
+					memset(buffer, 0, sizeof(buffer));
+
+					buffer[0] = highScorePacket.id;
+					offset++;
+
+					uint32_t messageLength = static_cast<uint32_t>(highScorePacket.writePos);
+					messageLength = htonl(messageLength);
+					memcpy(buffer + offset, &messageLength, sizeof(messageLength));
+					offset += sizeof(messageLength);
+
+					memcpy(buffer + offset, highScorePacket.body, highScorePacket.writePos);
+					offset += highScorePacket.writePos;
+
+					// Send the response
+					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+					break;
+				}
 				case PLAYER_DC:
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
 					offset += msg.data.writePos;
@@ -761,6 +804,10 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 			case SHIP_MOVE:
 				ProcessShipMovement(recvAddr, buffer, recvLen);
 				break;
+			case CLIENT_REQ_HIGHSCORE:
+				ClientHandleHighscoreRequest(recvAddr);
+				break;
+
 			default:
 				ForwardPacket(recvAddr, buffer, recvLen);
 				break;
@@ -1133,6 +1180,26 @@ void RespawnShip(uint32_t playerID)
 	std::lock_guard<std::mutex> lock(lockMutex);
 	messageQueue.push(respawnMsg);
 }
+void ClientHandleHighscoreRequest(const sockaddr_in &clientAddr)
+{
+	// Create response packet
+	Packet highscorePacket(CLIENT_REQ_HIGHSCORE);
+
+	// Pack number of scores
+	uint16_t numScores = static_cast<uint16_t>(topScores.size());
+	highscorePacket << numScores;
+
+	// Pack each score
+	for (const auto &score : topScores)
+	{
+		highscorePacket << score.playerName << score.score;
+	}
+
+	// Send the response directly to the requesting client
+	sendto(udpListenerSocket, highscorePacket.body, highscorePacket.writePos, 0,
+		(struct sockaddr *)&clientAddr, sizeof(clientAddr));
+}
+
 void HandleHighscoreRequest(const sockaddr_in &clientAddr)
 {
 	// Create response packet
