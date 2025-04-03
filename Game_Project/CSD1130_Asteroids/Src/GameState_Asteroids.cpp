@@ -87,7 +87,7 @@ const unsigned long FLAG_ACTIVE = 0x00000001;
 // functions to create/destroy a game object instance
 GameObjInst *gameObjInstCreate(unsigned long type, AEVec2 *scale,
 	AEVec2 *pPos, AEVec2 *pVel, float dir);
-GameObjInst *bulletObjInstCreate(AEVec2 *pPos, AEVec2 *pVel, float dir, uint32_t id = BULLET_ID_MAX);
+GameObjInst *bulletObjInstCreate(AEVec2 *pPos, AEVec2 *pVel, float dir, uint32_t id = 99999);
 void				gameObjInstDestroy(GameObjInst *pInst);
 
 // To help render game object instances that holds mesh textures
@@ -721,7 +721,7 @@ GameObjInst *gameObjInstCreate(unsigned long type,
 GameObjInst *bulletObjInstCreate(AEVec2 *pPos, AEVec2 *pVel, float dir, uint32_t id)
 {
 	GameObjInst *pInst;
-	if (id >= BULLET_ID_MAX)
+	if (id == 99999)
 	{
 		pInst = gameData.sGameObjInstList + 4 + (gameData.currID * BULLET_ID_MAX) + gameData.bulletIDCount;
 		pInst->serverID = 4 + (gameData.currID * BULLET_ID_MAX) + gameData.bulletIDCount;
