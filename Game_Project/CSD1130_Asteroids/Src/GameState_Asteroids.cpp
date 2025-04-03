@@ -48,7 +48,6 @@ const float         BOUNDING_RECT_SIZE      = 1.0f;         // this is the norma
 
 const float			SCREEN_WIDTH = 1280.0f;
 const float			SCREEN_HEIGHT = 720.0f;
-const float         ASTEROID_ACCEL = 100.0f;
 const float			POWERUP_ACCEL = 50.0f;
 const float         POWERUP_TIME = 5.0f;
 const float         WAVE_TIME = 4.0f;
@@ -257,6 +256,8 @@ void GameStateAsteroidsInit(void)
 {
 	// establish connection???
 	NetworkClient::Instance().Init();
+
+	std::cout << AEGfxGetWinMinX() << ", " << AEGfxGetWinMaxX() << ", " << AEGfxGetWinMinY() << ", " << AEGfxGetWinMaxY() << std::endl;
 
 	//waveTimer = 0.0f;
 
@@ -828,6 +829,7 @@ void UpdateGO()
 /// </summary>
 void CheckGOCollision()
 {
+	return; // no collision for now
 	for (uint32_t i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
 		GameObjInst* pInst_1 = gameData.sGameObjInstList + i;
@@ -937,9 +939,9 @@ void UpdateGOCollisionBoxes()
 /// <param name="_pos">Position of the new GO</param>
 /// <param name="_vel">Velocity of the new GO</param>
 /// <param name="_scale">Scale of the new GO</param>
-void CreateAsteroid(AEVec2 _pos, AEVec2 _vel, AEVec2 _scale)
+GameObjInst* CreateAsteroid(AEVec2 _pos, AEVec2 _vel, AEVec2 _scale, float dir)
 {
-	gameObjInstCreate(TYPE_ASTEROID, &_scale, &_pos, &_vel, 0.0f);
+	return gameObjInstCreate(TYPE_ASTEROID, &_scale, &_pos, &_vel, 0.0f);
 
 }
 
@@ -1040,6 +1042,30 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		msg >> clientID;
 		gameData.spShip[clientID]->active = true;
 		gameData.currID = clientID;
+
+		int totalAsteroids;
+		msg >> totalAsteroids;
+
+		if (totalAsteroids > 0)
+		{
+			for (int i = 0; i < totalAsteroids; ++i)
+			{
+				AEVec2 pos;
+				AEVec2 vel;
+				AEVec2 scale;
+				scale.x = 20.0f;
+				scale.y = 20.0f;
+				float dirCur;
+				int id;
+				msg >> id >> pos.x >> pos.y >> vel.x >> vel.y >> dirCur;
+
+
+				GameObjInst* asteroid = CreateAsteroid(pos, vel, scale, dirCur);
+				asteroid->active = true;
+				asteroid->serverID = id;
+			}
+		}
+		
 		NetworkClient::Instance().SetShutdownPCK(clientID);
 		break;
 
@@ -1108,7 +1134,26 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	}
 		// switch cases
 	case ASTEROID_CREATED: // temporary
-		ProcessNewAsteroid(msg, data);
+
+		int numOfAsteroids;
+		msg >> numOfAsteroids;
+		for (int i = 0; i < numOfAsteroids; ++i)
+		{
+			AEVec2 pos;
+			AEVec2 vel;
+			AEVec2 scale;
+			scale.x = 20.0f;
+			scale.y = 20.0f;
+			float dirCur;
+			int id;
+			msg >> id >> pos.x >> pos.y >> vel.x >> vel.y >> dirCur;
+
+
+			GameObjInst* asteroid = CreateAsteroid(pos, vel, scale, dirCur);
+			asteroid->active = true;
+			asteroid->serverID = id;
+		}
+		//ProcessNewAsteroid(msg, data);
 		break;
 	case BULLET_CREATED:
 	{
@@ -1185,8 +1230,8 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 
 void ProcessNewAsteroid(Packet& packet, GameData& data)
 {
-	float xPos;
-	packet >> xPos;
+	//float xPos;
+	//packet >> xPos;
 
 
 

@@ -34,7 +34,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <random>
 #include <mutex>
 #include <queue>
-
+#include "Vec2.h"
  // Tell the Visual Studio linker to include the following library in linking.
  // Alternatively, we could add this file to the linker command-line parameters,
  // but including it in the source code simplifies the configuration.
@@ -76,7 +76,10 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define REQ_GET_SCORES ((unsigned char)0x8)
 #define RSP_GET_SCORES ((unsigned char)0x9)
 #define SLEEP_TIME 0
-
+const float			FIXED_DELTA_TIME = 0.01667f; // Fixed time step for 60 FPS
+#define X_SIZE 640
+#define Y_SIZE 360
+const float         ASTEROID_ACCEL = 100.0f;
 #define ASTEROID_SCORE 100;
 
 // Add these new handler functions:
@@ -84,6 +87,7 @@ void HandleSubmitScore(char *buffer, SOCKET clientSocket);
 void ProcessPlayerDisconnect(const char *buffer, int recvLen);
 void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 void HandleGetScores(SOCKET clientSocket);
+void FixedUpdate();
 void UDPSendingHandler();
 void UDPReceiveHandler(SOCKET udpListenerSocket);
 void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int recvLen);
@@ -115,8 +119,73 @@ SOCKET udpListenerSocket = INVALID_SOCKET;
 std::string filePath;
 std::mt19937 generator;
 std::uniform_real_distribution dis(0.0, 1.0);
+double accumulatedTime = 0.0;
 
 bool debugPrint = false;
+
+float generateRandomFloat(float min, float max) {
+	// Create a random engine (using the current time as a seed)
+	std::random_device rd;
+	std::mt19937 gen(rd());
+
+	// Create a uniform distribution in the range [min, max]
+	std::uniform_real_distribution<> dis(min, max);
+
+	// Generate a random float
+	return dis(gen);
+}
+
+Asteroid RandomiseAsteroid(float min_xPos, float max_xPos, float min_yPos, float max_yPos)
+{
+	Carmicah::Vec2f pos, vel, scale;
+	pos.x = generateRandomFloat(min_xPos, max_xPos);//AERandFloat() * (max_xPos - min_xPos) + min_xPos;
+	pos.y = generateRandomFloat(min_yPos, max_yPos);//AERandFloat() * (max_yPos - min_yPos) + min_yPos;
+	float randAng = generateRandomFloat(0, 360);//AERandFloat() * 360;
+
+	Carmicah::Vec2f dir(cosf(randAng), sinf(randAng));
+	//AEVec2Set(&dir, cosf(randAng), sinf(randAng));
+	dir = dir.normalize();
+	//AEVec2Normalize(&dir, &dir);
+	vel = Carmicah::Vec2f(0, 0);
+	//AEVec2Zero(&ve
+	dir *= ASTEROID_ACCEL;
+	//AEVec2Scale(&dir, &dir, ASTEROID_ACCEL);
+	//AEVec2Add(&vel, &vel, &dir);
+	vel += dir;
+
+	float randScaleX = 20.0f;// AERandFloat() * (ASTEROID_MAX_SCALE_X - ASTEROID_MIN_SCALE_X) + ASTEROID_MIN_SCALE_X;
+	float randScaleY = 20.0f; //AERandFloat() * (ASTEROID_MAX_SCALE_Y - ASTEROID_MIN_SCALE_Y) + ASTEROID_MIN_SCALE_Y;
+	//AEVec2Set(&scale, randScaleX, randScaleY);
+	scale = Carmicah::Vec2f(randScaleX, randScaleY);
+
+	Asteroid newAsteroid;
+	newAsteroid.xPos = pos.x;
+	newAsteroid.yPos = pos.y;
+	newAsteroid.dirCur = randAng;
+	newAsteroid.vel_x = vel.x;
+	newAsteroid.vel_y = vel.y;
+	newAsteroid.xScale = randScaleX;
+	newAsteroid.yScale = randScaleY;
+	newAsteroid.active = true;
+	newAsteroid.creationTime = std::chrono::steady_clock::now();
+
+	for (int i = 0; i < MAX_ASTEROIDS; ++i)
+	{
+		if (serverData.totalAsteroids[i].active == false)
+		{
+			newAsteroid.ID = i;
+			serverData.totalAsteroids[i] = newAsteroid;
+			break;
+		}
+	}
+
+	serverData.activeAsteroids++;
+
+	return newAsteroid;
+
+	// Create after randomising
+	//CreateAsteroid(pos, vel, scale);
+}
 
 int main()
 {
@@ -243,13 +312,19 @@ int main()
 		return RETURN_CODE_2;
 	}
 	std::thread udpThread(UDPReceiveHandler, udpListenerSocket);
+	//std::thread fixedUpdateThread(FixedUpdate);
 	//std::thread udpSendThread(UDPSendingHandler);
 
-	const auto interval = std::chrono::duration<double>(0.005); // every 10 ms? idk for now
+	const auto interval = std::chrono::duration<double>(0.005); // every 5 ms? idk for now
 	auto lastSendTime = std::chrono::steady_clock::now();
 
 	auto lastPrintTime = std::chrono::steady_clock::now();
-	const auto printInterval = std::chrono::duration<double>(1.0); // every 10 ms? idk for now
+	const auto printInterval = std::chrono::duration<double>(1.0); // every 1 s? idk for now
+
+	auto lastWaveTime = std::chrono::steady_clock::now();
+	const auto waveInterval = std::chrono::duration<double>(10.0); // every 2s
+
+	serverData.gameRunning = false;
 
 	while (true)
 	{
@@ -258,7 +333,7 @@ int main()
 		if (currTime - lastPrintTime >= printInterval)
 		{
 			lastPrintTime = currTime;
-			for (int i = 0; i < MAX_CONNECTION; ++i)
+			/*for (int i = 0; i < MAX_CONNECTION; ++i)
 			{
 				if (!serverData.totalClients[i].connected) continue;
 
@@ -268,6 +343,56 @@ int main()
 					<< "Curr Pos : " << client.playerShip.xPos << ", " << client.playerShip.yPos << "\n"
 					<< "Curr Vel : " << client.playerShip.vel_x << ", " << client.playerShip.vel_y << "\n";
 
+			}*/
+		}
+
+
+		if (currTime - lastWaveTime >= waveInterval)
+		{
+			lastWaveTime = currTime;
+
+			
+			if (serverData.gameRunning && (serverData.activeAsteroids + 8) < MAX_ASTEROIDS )
+			{
+				std::vector<Asteroid> newAsteroids;
+
+				for (int i = 0; i < 2; ++i)
+				{
+					// Spawn from bottom of screen
+					newAsteroids.push_back(RandomiseAsteroid(-X_SIZE, X_SIZE, -Y_SIZE, -Y_SIZE));
+					// Spawn from top of screen
+					newAsteroids.push_back(RandomiseAsteroid(-X_SIZE, X_SIZE, Y_SIZE, Y_SIZE));
+					//// Spawn from Left of screen
+					newAsteroids.push_back(RandomiseAsteroid(-X_SIZE, -X_SIZE, -Y_SIZE, Y_SIZE));
+					//// Spawn from Right of screen
+					newAsteroids.push_back(RandomiseAsteroid(X_SIZE, X_SIZE, -Y_SIZE, Y_SIZE));
+				}
+
+				Packet asteroidPacket(ASTEROID_CREATED);
+
+				asteroidPacket << (int)newAsteroids.size();
+
+				// pack all the new asteroids into the packet
+				for (int i = 0; i < newAsteroids.size(); ++i)
+				{
+					asteroidPacket << newAsteroids[i].ID;
+					asteroidPacket << newAsteroids[i].xPos;
+					asteroidPacket << newAsteroids[i].yPos;
+					asteroidPacket << newAsteroids[i].vel_x;
+					asteroidPacket << newAsteroids[i].vel_y;
+					asteroidPacket << newAsteroids[i].dirCur;
+				}
+
+				// send it to client
+				{
+					MessageData newMessage;
+					newMessage.commandID = asteroidPacket.id;
+					//newMessage.sessionID = newClient.sessionID;// sending to the current client's id which is i 
+					newMessage.data = asteroidPacket;
+
+					std::lock_guard<std::mutex> lock(lockMutex);
+					messageQueue.push(newMessage);
+				}
 			}
 		}
 
@@ -340,7 +465,7 @@ int main()
 					// loop through every client to send this msg to them
 					for (int i = 0; i < MAX_CONNECTION; ++i)
 					{
-						ClientInfo &client = serverData.totalClients[i];
+						ClientInfo& client = serverData.totalClients[i];
 						if (!client.connected) continue; // skip unconnected client slots
 
 						sockaddr_in clientAddr;
@@ -356,12 +481,12 @@ int main()
 						}
 
 						// send it
-						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&clientAddr, sizeof(clientAddr));
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
 					}
 					break;
 				}
 				case SHIP_MOVE:
-
+				{
 					//msg.data << msg.sessionID;
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
 					offset += msg.data.writePos;
@@ -386,9 +511,37 @@ int main()
 						// send it
 						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
 					}
-					
-					break;
 
+					break;
+				}
+				case ASTEROID_CREATED:
+				{
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo& client = serverData.totalClients[i];
+						if (!client.connected) continue; // skip unconnected client slots
+						//if (client.sessionID == msg.sessionID) continue; // dont update for hte client thats moving
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+
+						// convert IP string to binary format
+						if (inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr) <= 0)
+						{
+							// invalid IP
+							continue;
+						}
+
+						// send it
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+					}
+
+					break;
+				}
 				case PLAYER_DC:
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
 					offset += msg.data.writePos;
@@ -592,6 +745,11 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 	}
 }
 
+//void FixedUpdate()
+//{
+//	accumulatedTime += 
+//}
+
 void HandleGetScores(SOCKET clientSocket)
 {
 	char message[MAX_STR_LEN];
@@ -737,11 +895,50 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 	newClient.connected = true;
 
 	serverData.playerMap[newClient.ip] = availID;
+	// the moment the first client joins, i set game running to true
+	serverData.gameRunning = true;
 
 	// default initialize ship data
 	// send back to the connecting player the reply
 	Packet replyPacket(REPLY_PLAYER_JOIN);
 	replyPacket << availID; // pack the ship's ID in 
+
+	/*
+	
+					asteroidPacket << newAsteroids[i].ID;
+					asteroidPacket << newAsteroids[i].xPos;
+					asteroidPacket << newAsteroids[i].yPos;
+					asteroidPacket << newAsteroids[i].vel_x;
+					asteroidPacket << newAsteroids[i].vel_y;
+					asteroidPacket << newAsteroids[i].dirCur;
+*/
+
+	auto currTime = std::chrono::steady_clock::now();
+	for (int i = 0; i < MAX_ASTEROIDS; ++i)
+	{
+		if (serverData.totalAsteroids[i].active == false) continue;
+
+		auto elapsedTime = std::chrono::duration_cast<std::chrono::seconds>(currTime - serverData.totalAsteroids[i].creationTime).count();
+		serverData.totalAsteroids[i].xPos += serverData.totalAsteroids[i].vel_x * elapsedTime;
+		serverData.totalAsteroids[i].yPos += serverData.totalAsteroids[i].vel_y * elapsedTime;
+
+	}
+
+	replyPacket << serverData.activeAsteroids; 
+	// send any asteroids that exist in the server
+	for (int i = 0; i < MAX_ASTEROIDS; ++i)
+	{
+		if (serverData.totalAsteroids[i].active == false) continue;
+
+		replyPacket << i;
+		replyPacket << serverData.totalAsteroids[i].xPos;
+		replyPacket << serverData.totalAsteroids[i].yPos;
+		replyPacket << serverData.totalAsteroids[i].vel_x;
+		replyPacket << serverData.totalAsteroids[i].vel_y;
+		replyPacket << serverData.totalAsteroids[i].dirCur;
+
+	}
+
 	//std::string message = replyPacket.ToString(); 
 	// send to the client
 	{

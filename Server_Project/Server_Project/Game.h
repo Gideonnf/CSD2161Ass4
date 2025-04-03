@@ -21,13 +21,17 @@ struct Ship
 };
 struct Asteroid
 {
+	std::chrono::steady_clock::time_point creationTime;
 	int ID;
 	float xPos;
 	float yPos;
+	float xScale;
+	float yScale;
 	float vel_x;
 	float vel_y;
 	float vel_server_x;
 	float vel_server_y;
+	float dirCur;
 	bool active;
 	TARGETTYPE targetType = TARGET_TYPE_ASTEROID;
 };

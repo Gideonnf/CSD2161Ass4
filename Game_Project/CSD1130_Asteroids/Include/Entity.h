@@ -87,6 +87,7 @@ struct GameObj
 struct GameObjInst
 {
 	bool active = false;
+	int serverID = 0;
 
 	GameObj* pObject;	// pointer to the 'original' shape
 	unsigned long		flag;		// bit flag or-ed together
