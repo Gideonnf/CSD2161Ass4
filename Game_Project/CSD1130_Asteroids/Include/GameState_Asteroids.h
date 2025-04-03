@@ -67,7 +67,7 @@ void UpdateGO();
 /*!*************************************************************************
 \brief Create an asteroid with the fixed variables
 ***************************************************************************/
-void CreateAsteroid(AEVec2 _pos, AEVec2 _vel, AEVec2 _scale);
+GameObjInst* CreateAsteroid(AEVec2 _pos, AEVec2 _vel, AEVec2 _scale);
 /*!*************************************************************************
 \brief Random asteroid at within an area
 	

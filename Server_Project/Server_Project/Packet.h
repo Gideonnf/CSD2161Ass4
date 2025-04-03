@@ -103,13 +103,8 @@ struct MessageData
 };
 
 
-inline uint64_t my_htonll(uint64_t val) {
-	return ((uint64_t)htonl((uint32_t)(val & 0xFFFFFFFF)) << 32) | htonl((uint32_t)(val >> 32));
-}
 
-inline uint64_t my_ntohll(uint64_t val) {
-	return ((uint64_t)ntohl((uint32_t)(val & 0xFFFFFFFF)) << 32) | ntohl((uint32_t)(val >> 32));
-}
+
 
 #pragma region DEFAULT_TEMPLATE
 template <typename T>
@@ -268,7 +263,7 @@ inline Packet& operator>>(Packet& packet, int32_t& data)
 	uint32_t netVal;
 	std::memcpy(&netVal, packet.body + packet.readPos, sizeof(netVal));
 	packet.readPos += sizeof(netVal);
-	data = static_cast<int32_t>(ntohl(netVal));
+	data =static_cast<int32_t>(ntohl(netVal));
 	return packet;
 }
 
@@ -344,7 +339,7 @@ inline Packet& operator>>(Packet& packet, float& data)
 template <>
 inline Packet& operator<< (Packet& packet, const int64_t& data)
 {
-	int64_t netVal = my_htonll(static_cast<uint64_t>(data));
+	int64_t netVal = htonll(static_cast<uint64_t>(data));
 	std::memcpy(packet.body + packet.writePos, &netVal, sizeof(netVal));
 	packet.writePos += sizeof(netVal);
 	return packet;
@@ -353,7 +348,7 @@ inline Packet& operator<< (Packet& packet, const int64_t& data)
 template <>
 inline Packet& operator<< (Packet& packet, const uint64_t& data)
 {
-	uint64_t netVal = my_htonll(data);
+	uint64_t netVal = htonll(data);
 	std::memcpy(packet.body + packet.writePos, &netVal, sizeof(netVal));
 	packet.writePos += sizeof(netVal);
 	return packet;
@@ -372,7 +367,7 @@ inline Packet& operator>>(Packet& packet, int64_t& data)
 	uint64_t netVal;
 	std::memcpy(&netVal, packet.body + packet.readPos, sizeof(netVal));
 	packet.readPos += sizeof(netVal);
-	data = static_cast<int64_t>(my_ntohll(netVal));
+	data = static_cast<int64_t>(ntohll(netVal));
 	return packet;
 }
 
@@ -388,7 +383,7 @@ inline Packet& operator>>(Packet& packet, uint64_t& data)
 	uint64_t netVal;
 	std::memcpy(&netVal, packet.body + packet.readPos, sizeof(netVal));
 	packet.readPos += sizeof(netVal);
-	data = /*static_cast<int64_t>*/(my_ntohll(netVal));
+	data = /*static_cast<int64_t>*/(ntohll(netVal));
 	return packet;
 }
 
@@ -398,44 +393,48 @@ inline Packet& operator>>(Packet& packet, uint64_t& data)
 
 #pragma region STRING SPECIALIZATION
 template <>
-inline Packet& operator<< (Packet& packet, const std::string& data)
+inline Packet &operator<< (Packet &packet, const std::string &data)
 {
-	//uint32_t netVal = htonl(static_cast<uint32_t>(data));
-	// note idk if this act works tbh
-	// until we can test highscore
-	std::memcpy(packet.body + packet.writePos, data.c_str(), data.length());
-	packet.writePos += data.length();;
+	// Truncate to 20 characters if necessary
+	std::string truncatedData = data.substr(0, 20);  // Ensure max 20 chars
+
+	// Copy the data into the packet
+	std::memcpy(packet.body + packet.writePos, truncatedData.c_str(), truncatedData.length());
+
+	// Update the write position
+	packet.writePos += 20;  // Always write exactly 20 bytes, even if padded with nulls
+
 	return packet;
 }
 
+
 template <>
-inline Packet &operator>>(Packet &packet, std::string &data)
+inline Packet& operator>>(Packet& packet, std::string& data)
 {
-	// Ensure that we don't read past the available data
-	//if (packet.readPos + 20 > sizeof(packet.body))
-	//{
-	//	// Handle error or return early if not enough data is available
-	//	return packet;
-	//}
+	//  i dont want to deal with string for now
+	// reading out of bounds
+	if (packet.readPos + 19 > packet.writePos)
+	{
+		return packet;
+	}
 
 	// Create a buffer to store up to 20 characters
-	char buffer[21];  // 20 chars + 1 for null-terminator
+	char buffer[20];  // 19 chars + 1 for null-terminator
 
-	// Copy the data into the buffer (ensure not to exceed 20 chars)
-	std::memcpy(buffer, packet.body + packet.readPos, 20);
+	// Copy the data into the buffer, ensuring we don't exceed 20 chars
+	std::memcpy(buffer, packet.body + packet.readPos, 19);
 
 	// Null-terminate the string (in case it's shorter than 20 characters)
 	buffer[20] = '\0';
 
-	// Convert the buffer into a string (this truncates if more than 20 chars)
+	// Convert buffer into a string (this truncates if more than 20 chars)
 	data = std::string(buffer);
 
-	// Update the read position in the packet
+	// Update read position in the packet
 	packet.readPos += 20;
 
 	return packet;
 }
-
 #pragma endregion
 
 

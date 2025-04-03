@@ -17,6 +17,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include "AEEngine.h"
 #include "AEMath.h"
 #include "Collision.h"
+#include <unordered_map>
 
 struct BGObject
 {
@@ -39,7 +40,7 @@ struct ButtonObj
 
 struct TextObj
 {
-	char* str;
+	std::string str;
 	s8 textSize;
 	AEVec2 pos;
 	s8* Font;
@@ -65,6 +66,8 @@ struct FadeObject
 */
 const unsigned int	GAME_OBJ_NUM_MAX = 32;			// The total number of different objects (Shapes)
 const unsigned int	GAME_OBJ_INST_NUM_MAX = 2048;			// The total number of different game object instances
+const unsigned int  BULLET_ID_MAX = 100;
+
 /******************************************************************************/
 /*!
 	Struct/Class Definitions
@@ -84,6 +87,9 @@ struct GameObj
 //Game object instance structure
 struct GameObjInst
 {
+	bool active = false;
+	int serverID = 0;
+
 	GameObj* pObject;	// pointer to the 'original' shape
 	unsigned long		flag;		// bit flag or-ed together
 	AEVec2				scale;		// scaling value of the object instance
@@ -116,13 +122,18 @@ struct GameData
 	unsigned long		sGameObjInstNum;							// The number of used game object instances
 
 	// pointer to the ship object
-	GameObjInst* spShip;										// Pointer to the "Ship" game object instance
+	GameObjInst* spShip[4];										// Pointer to the "Ship" game object instance
+
+	uint32_t bulletIDCount{0};
 
 	// pointer to the wall object
 	//static GameObjInst *		spWall;										// Pointer to the "Wall" game object instance
 
 	// the score = number of asteroid destroyed
-	unsigned long		sScore;										// Current score
+	//uint32_t		sScore;										// Current score
+	//uint32_t		sp2Score;										// Current score
+	//uint32_t		sp3Score;										// Current score
+	//uint32_t		sp4Score;										// Current score
 
 	bool onValueChange = true;
 
@@ -131,7 +142,12 @@ struct GameData
 	TextObj endText2;
 
 	TextObj textList[4];
+	TextObj playerTextScores[4];
+	uint32_t playerScores[4];
 
+	int currID{};
+
+	std::unordered_map<int, GameObjInst*> asteroidMap;
 };
 
 

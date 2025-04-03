@@ -1,3 +1,10 @@
 ﻿  echoserver.cpp
-  LINK : C:\Users\Gideon\Documents\School WOrk\Digipen Year 2 Tri 2\CSD2161Ass4\Server_Project\x64\Debug\Server_Project.exe not found or not built by the last incremental link; performing full link
-  Server_Project.vcxproj -> C:\Users\Gideon\Documents\School WOrk\Digipen Year 2 Tri 2\CSD2161Ass4\Server_Project\x64\Debug\Server_Project.exe
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(138,12): warning C4244: 'return': conversion from 'double' to 'float', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(465,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(474,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(503,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(532,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(559,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(579,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\Server_Project\echoserver.cpp(609,24): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+  Server_Project.vcxproj -> C:\Users\cryst\Documents\RTIS Year 2 Files\Sem 2\CSD2161 Computer Networks\Week 10\CSD2161Ass4\Server_Project\x64\Debug\Server_Project.exe

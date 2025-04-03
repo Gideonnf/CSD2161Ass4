@@ -134,8 +134,13 @@
     <ClCompile Include="echoserver.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="highscores.h" />
+    <ClInclude Include="Network.h" />
+    <ClInclude Include="Packet.h" />
+    <ClInclude Include="Game.h" />
     <ClInclude Include="taskqueue.h" />
     <ClInclude Include="taskqueue.hpp" />
+    <ClInclude Include="Vec2.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
