@@ -1377,6 +1377,8 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 
 
 		std::vector<PlayerScore> currentScores; // Adjust if score type differs
+		std::vector<uint32_t *> otherPlayerScores = { &gameData.sp2Score, &gameData.sp3Score, &gameData.sp4Score };
+		int index{};
 		for (uint16_t i = 0; i < numOfPlayers; ++i)
 		{
 			std::string playerName;
@@ -1384,6 +1386,17 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 			int playerID;
 			msg >> playerID >> score;
 			currentScores.emplace_back("player " + std::to_string(playerID), score);
+			if (playerID == gameData.currID)
+			{
+				// This is the local player; ignore and don't assign to sp2/sp3/sp4
+				continue;
+			}
+
+			if (index < otherPlayerScores.size())
+			{
+				*otherPlayerScores[index] = score; // Assign score to one of sp2, sp3, sp4
+				++index;
+			}
 		}
 
 		// Print the received high scores
