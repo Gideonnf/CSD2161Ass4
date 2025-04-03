@@ -830,7 +830,7 @@ void UpdateGO()
 /// </summary>
 void CheckGOCollision()
 {
-	return; // no collision for now
+	//return; // no collision for now
 	for (uint32_t i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
 		GameObjInst* pInst_1 = gameData.sGameObjInstList + i;
@@ -897,6 +897,13 @@ void CheckGOCollision()
 							//	"Time:" << timestamp << ' ' <<
 							//	"AsteroidID:" << i;
 							NetworkClient::Instance().CreateMessage(pck);
+
+							Packet pck2(CMDID::SHIP_MOVE);
+							pck2 << gameData.currID << NetworkClient::Instance().GetTimeDiff() << 0 <<
+								gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
+								gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
+								gameData.spShip[gameData.currID]->dirCurr;
+							NetworkClient::Instance().CreateMessage(pck2);
 						}
 
 					}
