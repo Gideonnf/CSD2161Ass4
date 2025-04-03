@@ -91,6 +91,7 @@ void FixedUpdate();
 void UDPSendingHandler();
 void UDPReceiveHandler(SOCKET udpListenerSocket);
 void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int recvLen);
+void ForwardPacket(const sockaddr_in& clientAddr, const char* buffer, int recvLen);
 void ProcessBulletFired(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 void ProcessBulletCollision(uint32_t bulletID, uint32_t targetID, uint8_t targetType);
 void ProcessAsteroidCreated(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
@@ -592,6 +593,25 @@ int main()
 					offset += msg.data.writePos;
 					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr *)&otherAddr, sizeof(otherAddr));*/
 					break;
+				default:
+					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
+					offset += msg.data.writePos;
+
+					for (int i = 0; i < MAX_CONNECTION; ++i)
+					{
+						ClientInfo& client = serverData.totalClients[i];
+						if (!client.connected) continue;
+						if (i == msg.sessionID) continue;
+
+						sockaddr_in clientAddr;
+						memset(&clientAddr, 0, sizeof(clientAddr));
+						clientAddr.sin_family = AF_INET;
+						clientAddr.sin_port = htons(client.port);
+						inet_pton(AF_INET, client.ip.c_str(), &clientAddr.sin_addr);
+
+						sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+					}
+					break;
 				}
 				// pop the message im using
 				messages.pop();
@@ -739,6 +759,9 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				break;
 			case SHIP_MOVE:
 				ProcessShipMovement(recvAddr, buffer, recvLen);
+				break;
+			default:
+				ForwardPacket(recvAddr, buffer, recvLen);
 				break;
 			}
 		}
@@ -1036,6 +1059,34 @@ void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int 
 		messageQueue.push(newMessage);
 	}
 
+}
+void ForwardPacket(const sockaddr_in& clientAddr, const char* buffer, int recvLen)
+{
+	int offset = 1;
+
+	// get rid of header data
+	uint32_t msgLength;
+	std::memcpy(&msgLength, buffer + offset, sizeof(msgLength));
+	msgLength = ntohl(msgLength);
+	offset += sizeof(msgLength);
+
+	Packet returnPacket(static_cast<CMDID>(buffer[0]));
+	returnPacket.writePos += msgLength;
+	std::memcpy(returnPacket.body, buffer + offset, msgLength);
+
+	int sessionID;
+	returnPacket >> sessionID;
+	ClientInfo& client = serverData.totalClients[sessionID];
+
+	{
+		MessageData newMessage;
+		newMessage.commandID = returnPacket.id;
+		newMessage.sessionID = client.sessionID;// sending to the current client's id which is i 
+		newMessage.data = returnPacket;
+
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(newMessage);
+	}
 }
 void RespawnShip(uint32_t playerID)
 {

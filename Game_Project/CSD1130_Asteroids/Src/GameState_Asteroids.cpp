@@ -421,7 +421,7 @@ void GameStateAsteroidsUpdate(void)
 
 			{
 				Packet pck(CMDID::BULLET_CREATED);
-				pck << NetworkClient::Instance().GetTimeDiff() << bulletID << pos.x << pos.y << vel.x << vel.y << gameData.spShip[gameData.currID]->dirCurr;
+				pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << bulletID << pos.x << pos.y << vel.x << vel.y << gameData.spShip[gameData.currID]->dirCurr;
 				NetworkClient::Instance().CreateMessage(pck);
 			}
 
@@ -673,7 +673,7 @@ void GameStateAsteroidsProcessMessage()
 	Packet msg = NetworkClient::Instance().GetIncomingMessage();
 	// so that i dont have to work on the same file
 	// ill handle all message processing in ProcessReceive.h
-	ProcessPacketMessages(msg, gameData);
+ 	ProcessPacketMessages(msg, gameData);
 
 
 }
@@ -695,7 +695,7 @@ GameObjInst * gameObjInstCreate(unsigned long type,
 	AE_ASSERT_PARM(type < gameData.sGameObjNum);
 	
 	// loop through the object instance list to find a non-used object instance
-	for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
+	for (unsigned long i = 400; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
 		GameObjInst * pInst = gameData.sGameObjInstList + i;
 
@@ -706,6 +706,7 @@ GameObjInst * gameObjInstCreate(unsigned long type,
 			pInst->pObject	= gameData.sGameObjList + type;
 			
 			pInst->flag		= FLAG_ACTIVE;
+			pInst->active	= true;
 			pInst->scale	= *scale;
 			pInst->posCurr	= pPos ? *pPos : zero;
 			pInst->posPrev = pInst->posCurr;
@@ -869,7 +870,7 @@ void CheckGOCollision()
 						{
 							Packet pck(CMDID::BULLET_COLLIDE);
 
-							pck << NetworkClient::Instance().GetTimeDiff() << j << i << gameData.sScore;
+							pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << j << i << gameData.sScore;
 							//  "Time:" << timestamp << ' ' <<
 							//	"BulletID:" << j << ' ' <<
 							//	"AsteroidID:" << i << ' ' <<
@@ -892,7 +893,7 @@ void CheckGOCollision()
 
 						{
 							Packet pck(CMDID::SHIP_COLLIDE);
-							pck << NetworkClient::Instance().GetTimeDiff() << i;
+							pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << i;
 							//	"Time:" << timestamp << ' ' <<
 							//	"AsteroidID:" << i;
 							NetworkClient::Instance().CreateMessage(pck);
@@ -1035,7 +1036,7 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 
 	int32_t clientID;
 
-	switch (msg.id)
+ 	switch (msg.id)
 	{
 	case REPLY_PLAYER_JOIN:
 	{
@@ -1161,6 +1162,8 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		// "ID:" << bulletID <<
 		uint64_t timeDiff;
 		uint32_t bulletID;
+		msg >> clientID;
+
 		msg >> timeDiff >> bulletID;
 
 		AEVec2 pos, vel;
@@ -1203,6 +1206,8 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	{
 		uint64_t timeDiff;
 		uint32_t bulletID, asteroidID;
+		msg >> clientID;
+
 		msg >> timeDiff >> bulletID >> asteroidID;
 
 		// if destroy happen before create (???)
@@ -1219,6 +1224,8 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 	{
 		uint64_t timeDiff;
 		uint32_t asteroidID;
+		msg >> clientID;
+
 		msg >> timeDiff >> asteroidID;
 
 		GameObjInst* pInst = gameData.sGameObjInstList + asteroidID;
