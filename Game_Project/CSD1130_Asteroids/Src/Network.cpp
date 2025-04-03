@@ -150,6 +150,8 @@ void NetworkClient::Shutdown()
 	{
 		connected = false;
 
+		SendSingularMessage(udpSocket, shutdownPck);
+
 		// join back the two threads
 		//if (senderThread.joinable())
 		//	senderThread.join();
@@ -168,9 +170,16 @@ void NetworkClient::Shutdown()
 	}
 }
 
+void NetworkClient::SetShutdownPCK(int currID)
+{
+	shutdownPck = Packet(CMDID::PLAYER_DC);
+	shutdownPck << currID;
+}
+
 //Reading and sending the message
 void NetworkClient::SendMessages(SOCKET clientSocket)
 {
+
 	while (connected)
 	{
 		Packet outMsg;
@@ -186,41 +195,46 @@ void NetworkClient::SendMessages(SOCKET clientSocket)
 		// if its not an empty msg
 		if (outMsg.id != PACKET_ERROR)
 		{
-			// send it?? process it?? idk
-			//Read command ID and then construct the message 
-			char buffer[MAX_STR_LEN];
-
-			unsigned int headerOffset = 0;
-
-			uint8_t commandID = static_cast<uint8_t>(outMsg.id);
-			memcpy(&buffer[0], &commandID, sizeof(commandID));
-			headerOffset += 1;
-
-			// any other header stuff do here
-			
-			// get the file length/message length based on writePos
-			uint32_t fileLength = static_cast<uint32_t>(outMsg.writePos);
-			fileLength = htonl(fileLength);
-			memcpy(buffer + headerOffset, &fileLength, sizeof(fileLength));
-			headerOffset += sizeof(fileLength);
-
-
-			// copy the body into the msg
-			memcpy(buffer + headerOffset, outMsg.body, outMsg.writePos);
-			headerOffset += outMsg.writePos;
-
-			int sentBytes = sendto(clientSocket, buffer, headerOffset, 0,
-				reinterpret_cast<sockaddr*>(&udpServerAddress), sizeof(udpServerAddress));
-
-			if (sentBytes == SOCKET_ERROR)
-			{
-				std::cerr << "Failed to send message!" << std::endl;
-			}
-
+			SendSingularMessage(clientSocket, outMsg);
 		}
 
 		//Sleep(SLEEP_TIME);
 	}
+}
+
+void  NetworkClient::SendSingularMessage(SOCKET clientSocket, Packet msg)
+{
+	// send it?? process it?? idk
+	//Read command ID and then construct the message 
+	char buffer[MAX_STR_LEN];
+
+	unsigned int headerOffset = 0;
+
+	uint8_t commandID = static_cast<uint8_t>(msg.id);
+	memcpy(&buffer[0], &commandID, sizeof(commandID));
+	headerOffset += 1;
+
+	// any other header stuff do here
+
+	// get the file length/message length based on writePos
+	uint32_t fileLength = static_cast<uint32_t>(msg.writePos);
+	fileLength = htonl(fileLength);
+	memcpy(buffer + headerOffset, &fileLength, sizeof(fileLength));
+	headerOffset += sizeof(fileLength);
+
+
+	// copy the body into the msg
+	memcpy(buffer + headerOffset, msg.body, msg.writePos);
+	headerOffset += msg.writePos;
+
+	int sentBytes = sendto(clientSocket, buffer, headerOffset, 0,
+		reinterpret_cast<sockaddr*>(&udpServerAddress), sizeof(udpServerAddress));
+
+	if (sentBytes == SOCKET_ERROR)
+	{
+		std::cerr << "Failed to send message!" << std::endl;
+	}
+
 }
 //Take out the header and parse the message before adding it into the queue
 //Queue msg should be the commandID and the message

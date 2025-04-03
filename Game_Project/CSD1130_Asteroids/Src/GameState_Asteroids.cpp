@@ -1065,7 +1065,8 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 				asteroid->serverID = id;
 			}
 		}
-
+		
+		NetworkClient::Instance().SetShutdownPCK(clientID);
 		break;
 
 	}
