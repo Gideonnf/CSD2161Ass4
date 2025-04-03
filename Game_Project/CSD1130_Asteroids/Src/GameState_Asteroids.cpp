@@ -1089,6 +1089,18 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 		gameData.spShip[clientID]->serverID = clientID;
 		gameData.currID = clientID;
 
+		uint8_t playerExist;
+		msg >> playerExist;
+
+		if ((bool)playerExist)
+		{
+			msg >> (float)gameData.spShip[clientID]->posCurr.x;
+			msg >> (float)gameData.spShip[clientID]->posCurr.y;
+			msg >> (float)gameData.spShip[clientID]->velCurr.x;
+			msg >> (float)gameData.spShip[clientID]->velCurr.x;
+			msg >> gameData.spShip[clientID]->dirCurr;
+		}
+
 		int totalAsteroids;
 		msg >> totalAsteroids;
 
@@ -1360,9 +1372,29 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 			highScores.emplace_back(playerName, score);
 		}
 
+		uint16_t numOfPlayers;
+		msg >> numOfPlayers; // Read the number of high scores
+
+
+		std::vector<PlayerScore> currentScores; // Adjust if score type differs
+		for (uint16_t i = 0; i < numOfPlayers; ++i)
+		{
+			std::string playerName;
+			uint32_t score;
+			int playerID;
+			msg >> playerID >> score;
+			currentScores.emplace_back("player " + std::to_string(playerID), score);
+		}
+
 		// Print the received high scores
 		std::cout << "High Scores:\n";
 		for (const auto &entry : highScores)
+		{
+			std::cout << entry.playerName << ": " << entry.score << " points\n";
+		}
+
+		std::cout << "Current Scores:\n";
+		for (const auto& entry : currentScores)
 		{
 			std::cout << entry.playerName << ": " << entry.score << " points\n";
 		}

@@ -715,7 +715,7 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				int asteroidID;
 				asteroidPkt >> asteroidID;
 
-				std::cout << "Destryoing " << asteroidID << std::endl;
+				//std::cout << "Destryoing " << asteroidID << std::endl;
 				if (asteroidID > MAX_ASTEROIDS) break; // not suppose to be more
 
 				if (serverData.totalAsteroids[asteroidID].active)
@@ -873,11 +873,24 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 		}
 	}
 
-	if (availID == -1)
+	//if (availID == -1)
+	//{
+	bool clientExist = false;
+	// check if the client connected before
+	std::string ip = inet_ntoa(clientAddr.sin_addr);
+	std::string port = std::to_string(ntohs(clientAddr.sin_port));
+	std::string mapKey = ip + ":" + port;
+	if (serverData.playerMap.count(mapKey) > 0)
 	{
-		// send a rej packet but i lazy do that now
-		return;
+		availID = serverData.playerMap[mapKey];
+		clientExist = true;
 	}
+
+		// send a rej packet but i lazy do that now
+		//return;
+	//}
+
+	if (availID < 0) return; // shouldn't hit tho
 
 	ClientInfo &newClient = serverData.totalClients[availID];
 
@@ -886,7 +899,9 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 	newClient.port = ntohs(clientAddr.sin_port);
 	newClient.connected = true;
 
-	serverData.playerMap[newClient.ip] = availID;
+	std::string key = newClient.ip + ":" + std::to_string(newClient.port);
+
+	serverData.playerMap[key] = availID;
 	// the moment the first client joins, i set game running to true
 	serverData.gameRunning = true;
 
@@ -894,7 +909,17 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 	// send back to the connecting player the reply
 	Packet replyPacket(REPLY_PLAYER_JOIN);
 	replyPacket << availID; // pack the ship's ID in 
-
+	replyPacket << (uint8_t)clientExist;
+	if (clientExist)
+	{
+		ClientInfo& info = serverData.totalClients[availID];
+		//replyPacket << playerIDs[i];
+		replyPacket << info.playerShip.xPos;
+		replyPacket << info.playerShip.yPos;
+		replyPacket << info.playerShip.vel_x;
+		replyPacket << info.playerShip.vel_y;
+		replyPacket << info.playerShip.dirCur;
+	}
 	/*
 	
 					asteroidPacket << newAsteroids[i].ID;
@@ -931,7 +956,7 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 		playerIDs.push_back(i);
 	}
 
-	if (playerIDs.size() <= 1) return; // if onyl 1 player has been made then dont send anything
+	//if (playerIDs.size() <= 1) return; // if onyl 1 player has been made then dont send anything
 
 	newPlayerPacket << (uint32_t)playerIDs.size(); // push back the number of active players
 
@@ -1133,6 +1158,26 @@ void ClientHandleHighscoreRequest(const sockaddr_in &clientAddr, const char *buf
 	for (const auto &score : topScores)
 	{
 		highscorePacket << score.playerName << score.score;
+	}
+
+
+	uint16_t numOfPlayers = 0;
+
+	for (int i = 0; i < MAX_CONNECTION; ++i)
+	{
+		if (serverData.totalClients[i].connected == false) continue;
+
+		numOfPlayers++;
+	}
+
+	highscorePacket << numOfPlayers;
+
+	// i rlly dont wanna loop twice
+	for (int i = 0; i < MAX_CONNECTION; ++i)
+	{
+		if (serverData.totalClients[i].connected == false) continue;
+
+		highscorePacket << i << serverData.totalClients[i].playerShip.score;
 	}
 
 	{
