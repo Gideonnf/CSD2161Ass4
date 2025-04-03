@@ -837,6 +837,8 @@ void CheckGOCollision()
 		if ((pInst_1->flag & FLAG_ACTIVE) == 0)
 			continue;
 
+		if (pInst_1->active == false) continue;
+
 		// If its an asteroid, then start checking for collision against ship or bullet
 		if (pInst_1->pObject->type == TYPE_ASTEROID)
 		{
@@ -846,6 +848,8 @@ void CheckGOCollision()
 				if ((pInst_2->flag & FLAG_ACTIVE) == 0) continue;
 				if ((pInst_2->pObject->type == TYPE_ASTEROID)) continue;
 				float firstTimeOfCollision = 0;
+
+				if (pInst_2->active == false) continue;
 
 				switch (pInst_2->pObject->type)
 				{
@@ -868,6 +872,10 @@ void CheckGOCollision()
 						}
 
 						{
+							Packet Asteroidpck(CMDID::ASTEROID_DESTROYED);
+							Asteroidpck << pInst_1->serverID;
+							NetworkClient::Instance().CreateMessage(Asteroidpck);
+
 							Packet pck(CMDID::BULLET_COLLIDE);
 
 							pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << j << i << gameData.sScore;
@@ -888,6 +896,11 @@ void CheckGOCollision()
 
 						// Destroy the asteroid and update the ship live
 						gameObjInstDestroy(pInst_1);
+
+						Packet Asteroidpck(CMDID::ASTEROID_DESTROYED);
+						Asteroidpck << pInst_1->serverID;
+						NetworkClient::Instance().CreateMessage(Asteroidpck);
+
 
 						if (pInst_2->serverID == gameData.currID)
 						{
