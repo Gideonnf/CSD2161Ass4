@@ -12,7 +12,7 @@ Copyright (C) 2024 DigiPen Institute of Technology.
 Reproduction or disclosure of this file or its contents without the
 prior written consent of DigiPen Institute of Technology is prohibited.
  */
-/******************************************************************************/
+ /******************************************************************************/
 
 #include <Network.h>
 #include "main.h"
@@ -25,26 +25,26 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 */
 /******************************************************************************/
 
-const float			SHIP_SCALE_X			= 45.0f;		// ship scale x
-const float			SHIP_SCALE_Y			= 45.0f;		// ship scale y
-const float			BULLET_SCALE_X			= 20.0f;		// bullet scale x
-const float			BULLET_SCALE_Y			= 3.0f;			// bullet scale y
-const float			ASTEROID_MIN_SCALE_X	= 10.0f;		// asteroid minimum scale x
-const float			ASTEROID_MAX_SCALE_X	= 60.0f;		// asteroid maximum scale x
-const float			ASTEROID_MIN_SCALE_Y	= 10.0f;		// asteroid minimum scale y
-const float			ASTEROID_MAX_SCALE_Y	= 60.0f;		// asteroid maximum scale y
+const float			SHIP_SCALE_X = 45.0f;		// ship scale x
+const float			SHIP_SCALE_Y = 45.0f;		// ship scale y
+const float			BULLET_SCALE_X = 20.0f;		// bullet scale x
+const float			BULLET_SCALE_Y = 3.0f;			// bullet scale y
+const float			ASTEROID_MIN_SCALE_X = 10.0f;		// asteroid minimum scale x
+const float			ASTEROID_MAX_SCALE_X = 60.0f;		// asteroid maximum scale x
+const float			ASTEROID_MIN_SCALE_Y = 10.0f;		// asteroid minimum scale y
+const float			ASTEROID_MAX_SCALE_Y = 60.0f;		// asteroid maximum scale y
 const float         POWERUP_SCALE = 25.0f;
 
-const float			WALL_SCALE_X			= 64.0f;		// wall scale x
-const float			WALL_SCALE_Y			= 164.0f;		// wall scale y
+const float			WALL_SCALE_X = 64.0f;		// wall scale x
+const float			WALL_SCALE_Y = 164.0f;		// wall scale y
 
-const float			SHIP_ACCEL_FORWARD		= 100.0f;		// ship forward acceleration (in m/s^2)
-const float			SHIP_ACCEL_BACKWARD		= 100.0f;		// ship backward acceleration (in m/s^2)
-const float			SHIP_ROT_SPEED			= (2.0f * PI);	// ship rotation speed (degree/second)
+const float			SHIP_ACCEL_FORWARD = 100.0f;		// ship forward acceleration (in m/s^2)
+const float			SHIP_ACCEL_BACKWARD = 100.0f;		// ship backward acceleration (in m/s^2)
+const float			SHIP_ROT_SPEED = (2.0f * PI);	// ship rotation speed (degree/second)
 
-const float			BULLET_SPEED			= 400.0f;		// bullet speed (m/s)
+const float			BULLET_SPEED = 400.0f;		// bullet speed (m/s)
 
-const float         BOUNDING_RECT_SIZE      = 1.0f;         // this is the normalized bounding rectangle (width and height) sizes - AABB collision data
+const float         BOUNDING_RECT_SIZE = 1.0f;         // this is the normalized bounding rectangle (width and height) sizes - AABB collision data
 
 const float			SCREEN_WIDTH = 1280.0f;
 const float			SCREEN_HEIGHT = 720.0f;
@@ -85,13 +85,13 @@ const unsigned long FLAG_ACTIVE = 0x00000001;
 // ---------------------------------------------------------------------------
 
 // functions to create/destroy a game object instance
-GameObjInst *		gameObjInstCreate (unsigned long type, AEVec2* scale,
-											   AEVec2 * pPos, AEVec2 * pVel, float dir);
-GameObjInst* bulletObjInstCreate(AEVec2* pPos, AEVec2* pVel, float dir, uint32_t id = BULLET_ID_MAX);
-void				gameObjInstDestroy(GameObjInst * pInst);
+GameObjInst *gameObjInstCreate(unsigned long type, AEVec2 *scale,
+	AEVec2 *pPos, AEVec2 *pVel, float dir);
+GameObjInst *bulletObjInstCreate(AEVec2 *pPos, AEVec2 *pVel, float dir, uint32_t id = BULLET_ID_MAX);
+void				gameObjInstDestroy(GameObjInst *pInst);
 
 // To help render game object instances that holds mesh textures
-void RenderMeshObj(GameObjInst* GO);
+void RenderMeshObj(GameObjInst *GO);
 
 // Local variables needed are all declared here
 // Declared in namespace so it wont affect other files
@@ -99,11 +99,11 @@ namespace
 {
 	static GameData gameData;
 	BGObject bgGO;
-	AEGfxTexture* asteroidTexture;
+	AEGfxTexture *asteroidTexture;
 
-	AEGfxTexture* shipTexture;
-	AEGfxTexture* shipFireTexture;
-	AEGfxTexture* powerUpTexture;
+	AEGfxTexture *shipTexture;
+	AEGfxTexture *shipFireTexture;
+	AEGfxTexture *powerUpTexture;
 
 
 	s8 textFont;
@@ -155,14 +155,14 @@ void GameStateAsteroidsLoad(void)
 
 
 	// load/create the mesh data (game objects / Shapes)
-	GameObj * pObj;
+	GameObj *pObj;
 
 	// =====================
 	// create the ship shape
 	// =====================
 
-	pObj		= gameData.sGameObjList + gameData.sGameObjNum++;
-	pObj->type	= TYPE_SHIP;
+	pObj = gameData.sGameObjList + gameData.sGameObjNum++;
+	pObj->type = TYPE_SHIP;
 
 	AEGfxMeshStart();
 	AEGfxTriAdd(
@@ -190,12 +190,12 @@ void GameStateAsteroidsLoad(void)
 	AEGfxMeshStart();
 	AEGfxTriAdd(
 		-0.5f, -0.5f, 0xFFFFFF00, 0.0f, 0.0f,
-		 0.5f, 0.5f, 0xFFFFFF00, 0.0f, 0.0f,
+		0.5f, 0.5f, 0xFFFFFF00, 0.0f, 0.0f,
 		-0.5f, 0.5f, 0xFFFFFF00, 0.0f, 0.0f);
 	AEGfxTriAdd(
 		-0.5f, -0.5f, 0xFFFFFF00, 0.0f, 0.0f,
-		 0.5f, -0.5f, 0xFFFFFF00, 0.0f, 0.0f,
-		 0.5f, 0.5f, 0xFFFFFF00, 0.0f, 0.0f);
+		0.5f, -0.5f, 0xFFFFFF00, 0.0f, 0.0f,
+		0.5f, 0.5f, 0xFFFFFF00, 0.0f, 0.0f);
 
 	pObj->pMesh = AEGfxMeshEnd();
 	AE_ASSERT_MESG(pObj->pMesh, "fail to create object!!");
@@ -234,7 +234,7 @@ void GameStateAsteroidsLoad(void)
 		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,   // bottom-right: green
 		0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,    // top-right: white
 		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);  // top-left: blue
-	
+
 	bgGO.mesh = AEGfxMeshEnd();
 	bgGO.meshTex = AEGfxTextureLoad("../Resources/Textures/bg.png");
 	AE_ASSERT_MESG(bgGO.mesh, "fail to create object!!");
@@ -314,7 +314,7 @@ void GameStateAsteroidsInit(void)
 
 
 	// reset the score and the number of ships
-	gameData.sScore      = 0;
+	gameData.sScore = 0;
 	accumulatedTime = 0.0;
 
 	gameOver = false;
@@ -406,12 +406,12 @@ void GameStateAsteroidsUpdate(void)
 			vel.x = BULLET_SPEED * cosf(gameData.spShip[gameData.currID]->dirCurr);
 			vel.y = BULLET_SPEED * sinf(gameData.spShip[gameData.currID]->dirCurr);
 			AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-			GameObjInst* bulletObj = bulletObjInstCreate(&pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
+			GameObjInst *bulletObj = bulletObjInstCreate(&pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
 			unsigned int bulletID{};
 
 			for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 			{
-				GameObjInst* pInst = gameData.sGameObjInstList + i;
+				GameObjInst *pInst = gameData.sGameObjInstList + i;
 				if (pInst == bulletObj)
 				{
 					bulletID = i;
@@ -426,6 +426,14 @@ void GameStateAsteroidsUpdate(void)
 			}
 
 		}
+		if (AEInputCheckTriggered(AEVK_TAB))
+		{
+			Packet pck(CLIENT_REQ_HIGHSCORE);
+			pck << gameData.currID << NetworkClient::Instance().GetTimeDiff();
+
+			// Send packet to server
+			NetworkClient::Instance().CreateMessage(pck);
+		}
 
 		// Save previous positions
 		//  -- For all instances
@@ -435,7 +443,7 @@ void GameStateAsteroidsUpdate(void)
 		{
 			// Update all the GO Instances's prev positions here
 			// Before doing any update in collision and movement
-			GameObjInst* pInst = gameData.sGameObjInstList + i;
+			GameObjInst *pInst = gameData.sGameObjInstList + i;
 
 			// skip non-active object
 			if ((pInst->flag & FLAG_ACTIVE) == 0)
@@ -470,7 +478,7 @@ void GameStateAsteroidsUpdate(void)
 
 		for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 		{
-			GameObjInst* pInst = gameData.sGameObjInstList + i;
+			GameObjInst *pInst = gameData.sGameObjInstList + i;
 			AEMtx33		 trans, rot, scale;
 
 			// skip non-active object
@@ -530,14 +538,14 @@ void GameStateAsteroidsDraw(void)
 	// draw all object instances in the list
 	for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
-		GameObjInst * pInst = gameData.sGameObjInstList + i;
+		GameObjInst *pInst = gameData.sGameObjInstList + i;
 
 		// skip non-active object
 		if ((pInst->flag & FLAG_ACTIVE) == 0)
 			continue;
 
 		if (!pInst->active) continue; // dont render inactive objs
-		
+
 		// If its an gamobject that has a texture on it
 		if (pInst->pObject->pTexture != nullptr)
 		{
@@ -568,7 +576,7 @@ void GameStateAsteroidsDraw(void)
 	{
 		// Specific checks so  certain text dont render until required
 		if (!gameOver && (i == 1 || i == 2 || i == 3)) continue;
-		
+
 		if (gameOver)
 		{
 			if (gameData.sScore >= 5000)
@@ -592,7 +600,7 @@ void GameStateAsteroidsDraw(void)
 
 
 	// Updates the console print of the score and lives when value is changed
-	if(gameData.onValueChange)
+	if (gameData.onValueChange)
 	{
 		sprintf_s(strBuffer, "Score: %d", gameData.sScore);
 		//AEGfxPrint(10, 10, (u32)-1, strBuffer);
@@ -615,12 +623,12 @@ void GameStateAsteroidsFree(void)
 	// kill all object instances in the array using "gameObjInstDestroy"
 	for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
-		GameObjInst* pInst = gameData.sGameObjInstList + i;
+		GameObjInst *pInst = gameData.sGameObjInstList + i;
 
 		// skip non-active object
 		if ((pInst->flag & FLAG_ACTIVE) == 0)
 			continue;
-		
+
 		// Destroy the instance (set to the flag)
 		gameObjInstDestroy(pInst);
 	}
@@ -673,7 +681,7 @@ void GameStateAsteroidsProcessMessage()
 	Packet msg = NetworkClient::Instance().GetIncomingMessage();
 	// so that i dont have to work on the same file
 	// ill handle all message processing in ProcessReceive.h
- 	ProcessPacketMessages(msg, gameData);
+	ProcessPacketMessages(msg, gameData);
 
 
 }
@@ -683,36 +691,36 @@ void GameStateAsteroidsProcessMessage()
 	Create a game object
 */
 /******************************************************************************/
-GameObjInst * gameObjInstCreate(unsigned long type, 
-							   AEVec2 * scale,
-							   AEVec2 * pPos, 
-							   AEVec2 * pVel, 
-							   float dir)
+GameObjInst *gameObjInstCreate(unsigned long type,
+	AEVec2 *scale,
+	AEVec2 *pPos,
+	AEVec2 *pVel,
+	float dir)
 {
 	AEVec2 zero;
 	AEVec2Zero(&zero);
 
 	AE_ASSERT_PARM(type < gameData.sGameObjNum);
-	
+
 	// loop through the object instance list to find a non-used object instance
 	for (unsigned long i = 400; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
-		GameObjInst * pInst = gameData.sGameObjInstList + i;
+		GameObjInst *pInst = gameData.sGameObjInstList + i;
 
 		// check if current instance is not used
 		if (pInst->flag == 0)
 		{
 			// it is not used => use it to create the new instance
-			pInst->pObject	= gameData.sGameObjList + type;
-			
-			pInst->flag		= FLAG_ACTIVE;
-			pInst->active	= true;
-			pInst->scale	= *scale;
-			pInst->posCurr	= pPos ? *pPos : zero;
+			pInst->pObject = gameData.sGameObjList + type;
+
+			pInst->flag = FLAG_ACTIVE;
+			pInst->active = true;
+			pInst->scale = *scale;
+			pInst->posCurr = pPos ? *pPos : zero;
 			pInst->posPrev = pInst->posCurr;
-			pInst->velCurr	= pVel ? *pVel : zero;
-			pInst->dirCurr	= dir;
-			
+			pInst->velCurr = pVel ? *pVel : zero;
+			pInst->dirCurr = dir;
+
 			// return the newly created instance
 			return pInst;
 		}
@@ -722,9 +730,9 @@ GameObjInst * gameObjInstCreate(unsigned long type,
 	return 0;
 }
 
-GameObjInst* bulletObjInstCreate(AEVec2* pPos, AEVec2* pVel, float dir, uint32_t id)
+GameObjInst *bulletObjInstCreate(AEVec2 *pPos, AEVec2 *pVel, float dir, uint32_t id)
 {
-	GameObjInst* pInst;
+	GameObjInst *pInst;
 	if (id >= BULLET_ID_MAX)
 	{
 		pInst = gameData.sGameObjInstList + 4 + (gameData.currID * BULLET_ID_MAX) + gameData.bulletIDCount;
@@ -735,7 +743,7 @@ GameObjInst* bulletObjInstCreate(AEVec2* pPos, AEVec2* pVel, float dir, uint32_t
 	}
 	else // valid ID
 	{
-		 pInst = gameData.sGameObjInstList + id;
+		pInst = gameData.sGameObjInstList + id;
 	}
 	pInst->pObject = gameData.sGameObjList + TYPE_BULLET;
 	pInst->flag = FLAG_ACTIVE;
@@ -757,7 +765,7 @@ GameObjInst* bulletObjInstCreate(AEVec2* pPos, AEVec2* pVel, float dir, uint32_t
 	Destroy game object instance
 */
 /******************************************************************************/
-void gameObjInstDestroy(GameObjInst * pInst)
+void gameObjInstDestroy(GameObjInst *pInst)
 {
 	// if instance is destroyed before, just return
 	if (pInst->flag == 0)
@@ -783,7 +791,7 @@ void UpdateGO()
 	// ===================================================================
 	for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
-		GameObjInst* pInst = gameData.sGameObjInstList + i;
+		GameObjInst *pInst = gameData.sGameObjInstList + i;
 
 		// skip non-active object
 		if ((pInst->flag & FLAG_ACTIVE) == 0)
@@ -833,7 +841,7 @@ void CheckGOCollision()
 	return; // no collision for now
 	for (uint32_t i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
-		GameObjInst* pInst_1 = gameData.sGameObjInstList + i;
+		GameObjInst *pInst_1 = gameData.sGameObjInstList + i;
 
 		// skip non-active object
 		if ((pInst_1->flag & FLAG_ACTIVE) == 0)
@@ -842,9 +850,9 @@ void CheckGOCollision()
 		// If its an asteroid, then start checking for collision against ship or bullet
 		if (pInst_1->pObject->type == TYPE_ASTEROID)
 		{
-			for (uint32_t j = 0; j <  GAME_OBJ_INST_NUM_MAX; j++)
+			for (uint32_t j = 0; j < GAME_OBJ_INST_NUM_MAX; j++)
 			{
-				GameObjInst* pInst_2 = gameData.sGameObjInstList + j;
+				GameObjInst *pInst_2 = gameData.sGameObjInstList + j;
 				if ((pInst_2->flag & FLAG_ACTIVE) == 0) continue;
 				if ((pInst_2->pObject->type == TYPE_ASTEROID)) continue;
 				float firstTimeOfCollision = 0;
@@ -914,7 +922,7 @@ void UpdateGOCollisionBoxes()
 {
 	for (unsigned long i = 0; i < GAME_OBJ_INST_NUM_MAX; i++)
 	{
-		GameObjInst* pInst = gameData.sGameObjInstList + i;
+		GameObjInst *pInst = gameData.sGameObjInstList + i;
 
 		// skip non-active object
 		if ((pInst->flag & FLAG_ACTIVE) == 0)
@@ -940,7 +948,7 @@ void UpdateGOCollisionBoxes()
 /// <param name="_pos">Position of the new GO</param>
 /// <param name="_vel">Velocity of the new GO</param>
 /// <param name="_scale">Scale of the new GO</param>
-GameObjInst* CreateAsteroid(AEVec2 _pos, AEVec2 _vel, AEVec2 _scale, float dir)
+GameObjInst *CreateAsteroid(AEVec2 _pos, AEVec2 _vel, AEVec2 _scale, float dir)
 {
 	return gameObjInstCreate(TYPE_ASTEROID, &_scale, &_pos, &_vel, 0.0f);
 
@@ -1010,7 +1018,7 @@ void ResetShip()
 /// Renders a mesh object with a texture
 /// </summary>
 /// <param name="GO">The game object to render</param>
-void RenderMeshObj(GameObjInst* GO)
+void RenderMeshObj(GameObjInst *GO)
 {
 	AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
 	AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
@@ -1026,7 +1034,7 @@ void RenderMeshObj(GameObjInst* GO)
 
 }
 
-void ProcessPacketMessages(Packet& msg, GameData& data)
+void ProcessPacketMessages(Packet &msg, GameData &data)
 {
 	if (msg.id == PACKET_ERROR) return;
 
@@ -1036,7 +1044,7 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 
 	int32_t clientID;
 
- 	switch (msg.id)
+	switch (msg.id)
 	{
 	case REPLY_PLAYER_JOIN:
 	{
@@ -1061,12 +1069,12 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 				msg >> id >> pos.x >> pos.y >> vel.x >> vel.y >> dirCur;
 
 
-				GameObjInst* asteroid = CreateAsteroid(pos, vel, scale, dirCur);
+				GameObjInst *asteroid = CreateAsteroid(pos, vel, scale, dirCur);
 				asteroid->active = true;
 				asteroid->serverID = id;
 			}
 		}
-		
+
 		NetworkClient::Instance().SetShutdownPCK(clientID);
 		break;
 
@@ -1133,7 +1141,7 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 
 		break;
 	}
-		// switch cases
+	// switch cases
 	case ASTEROID_CREATED: // temporary
 
 		int numOfAsteroids;
@@ -1150,7 +1158,7 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 			msg >> id >> pos.x >> pos.y >> vel.x >> vel.y >> dirCur;
 
 
-			GameObjInst* asteroid = CreateAsteroid(pos, vel, scale, dirCur);
+			GameObjInst *asteroid = CreateAsteroid(pos, vel, scale, dirCur);
 			asteroid->active = true;
 			asteroid->serverID = id;
 			gameData.asteroidMap[id] = asteroid;
@@ -1186,7 +1194,7 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 			{
 				// it hasn't been created yet
 				// usually for new clients
-				GameObjInst* asteroid = CreateAsteroid(pos, vel, scale, dirCur);
+				GameObjInst *asteroid = CreateAsteroid(pos, vel, scale, dirCur);
 				asteroid->active = true;
 				asteroid->serverID = asteroidID;
 				gameData.asteroidMap[asteroidID] = asteroid;
@@ -1214,11 +1222,11 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		msg >> vel.x >> vel.y;
 		msg >> dir;
 
-		GameObjInst* pInst = bulletObjInstCreate(&pos, &vel, dir, bulletID);
+		GameObjInst *pInst = bulletObjInstCreate(&pos, &vel, dir, bulletID);
 
 		// Calculate timeDiff
 	}
-		break;
+	break;
 	case SHIP_MOVE:
 		//  "Time:" << timestamp << ' ' <<
 		//	"ShipNum:" << gameData.currID << ' ' <<
@@ -1236,7 +1244,7 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 			gameData.spShip[clientID]->velCurr.x >> gameData.spShip[clientID]->velCurr.y >>
 			gameData.spShip[clientID]->dirCurr;
 	}
-		break;
+	break;
 	case BULLET_COLLIDE:
 		//  "Time:" << timestamp << ' ' <<
 		//	"BulletID:" << j << ' ' <<
@@ -1251,12 +1259,12 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 
 		// if destroy happen before create (???)
 
-		GameObjInst* pInst = gameData.sGameObjInstList + bulletID;
+		GameObjInst *pInst = gameData.sGameObjInstList + bulletID;
 		pInst->active = false;
 		pInst = gameData.sGameObjInstList + asteroidID;
 		pInst->active = false;
 	}
-		break;
+	break;
 	case SHIP_COLLIDE:
 		//	"Time:" << timestamp << ' ' <<
 		//	"AsteroidID:" << i;
@@ -1267,14 +1275,26 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 
 		msg >> timeDiff >> asteroidID;
 
-		GameObjInst* pInst = gameData.sGameObjInstList + asteroidID;
+		GameObjInst *pInst = gameData.sGameObjInstList + asteroidID;
 		pInst->active = false;
 	}
+	break;
+	case CLIENT_REQ_HIGHSCORE:
+	{
+		msg >> clientID;
+		uint64_t timeDiff;
+		msg >> timeDiff;
+
+		std::cout << "Player " << clientID << " pressed TAB at time " << timeDiff << std::endl;
+
+		// Additional logic here if needed (e.g., triggering an event)
 		break;
+	}
+	break;
 	}
 }
 
-void ProcessNewAsteroid(Packet& packet, GameData& data)
+void ProcessNewAsteroid(Packet &packet, GameData &data)
 {
 	//float xPos;
 	//packet >> xPos;
