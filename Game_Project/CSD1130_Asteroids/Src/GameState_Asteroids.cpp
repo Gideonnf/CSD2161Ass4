@@ -585,7 +585,7 @@ void GameStateAsteroidsDraw(void)
 	}
 
 	// Handles the rendering of texture objects
-	for (int i = 0; i < 4; ++i)
+	for (int i = 0; i < 2; ++i)
 	{
 		// Specific checks so  certain text dont render until required
 		if (!gameOver && (i == 1 || i == 2 || i == 3)) continue;
@@ -918,7 +918,7 @@ void CheckGOCollision()
 
 							Packet pck(CMDID::BULLET_COLLIDE);
 
-							pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << gameData.playerScores[gameData.currID];
+							pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << j << i << gameData.playerScores[gameData.currID];
 							//  "Time:" << timestamp << ' ' <<
 							//	"BulletID:" << j << ' ' <<
 							//	"AsteroidID:" << i << ' ' <<
@@ -1120,6 +1120,7 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 			msg >> (float)gameData.spShip[clientID]->velCurr.x;
 			msg >> (float)gameData.spShip[clientID]->velCurr.x;
 			msg >> gameData.spShip[clientID]->dirCurr;
+			msg >> gameData.playerScores[clientID];
 		}
 
 		int totalAsteroids;
@@ -1167,6 +1168,7 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 			msg >> (float)gameData.spShip[clientID]->velCurr.x;
 			msg >> (float)gameData.spShip[clientID]->velCurr.x;
 			msg >> gameData.spShip[clientID]->dirCurr;
+			msg >> gameData.playerScores[clientID];
 			gameData.spShip[clientID]->serverID = clientID;
 			gameData.spShip[clientID]->active = true;
 		}
@@ -1312,7 +1314,7 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 		msg >> timeDiff >> playerInput;
 		msg >> gameData.spShip[clientID]->posCurr.x >> gameData.spShip[clientID]->posCurr.y >>
 			gameData.spShip[clientID]->velCurr.x >> gameData.spShip[clientID]->velCurr.y >>
-			gameData.spShip[clientID]->dirCurr;
+			gameData.spShip[clientID]->dirCurr >> gameData.playerScores[clientID];
 
 		gameData.spShip[clientID]->posPrev = gameData.spShip[clientID]->posCurr;
 	}
@@ -1431,6 +1433,21 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 		break;
 	}
 	break;
+	case GAME_OVER:
+	{
+		gameOver = true;
+		int winnerID;
+		msg >> winnerID;
+		if (winnerID == gameData.currID)
+		{
+			gameData.textList[1].str = "Game over. You Won!";
+		}
+		else
+		{
+			gameData.textList[1].str = "Game over, You Lost!";
+		}
+	}
+		break;
 	}
 }
 

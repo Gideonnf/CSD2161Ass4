@@ -82,6 +82,7 @@ const float			FIXED_DELTA_TIME = 0.01667f; // Fixed time step for 60 FPS
 const float         ASTEROID_ACCEL = 100.0f;
 #define ASTEROID_SCORE 100;
 
+
 // Add these new handler functions:
 void HandleSubmitScore(char *buffer, SOCKET clientSocket);
 void ProcessPlayerDisconnect(const char *buffer, int recvLen);
@@ -343,17 +344,36 @@ int main()
 		if (currTime - lastPrintTime >= printInterval)
 		{
 			lastPrintTime = currTime;
-			/*for (int i = 0; i < MAX_CONNECTION; ++i)
+
+			// if no more asteroids can spawn and all are destroyed
+			if (serverData.activeAsteroids >= (MAX_ASTEROIDS - 1) && serverData.numOfAsteroids <= 0)
 			{
-				if (!serverData.totalClients[i].connected) continue;
+				// game over
+				Packet gameOver(GAME_OVER);
+				int winnerID = 0;
+				//get the highest score player
+				for (int i = 1; i < MAX_CONNECTION; ++i)
+				{
+					if (serverData.totalClients[i].playerShip.score > serverData.totalClients[winnerID].playerShip.score)
+					{
+						winnerID = i;
+					}
+				}
 
-				ClientInfo& client = serverData.totalClients[i];
+				gameOver << winnerID;
 
-				std::cout << "Ship " << i << "\n"
-					<< "Curr Pos : " << client.playerShip.xPos << ", " << client.playerShip.yPos << "\n"
-					<< "Curr Vel : " << client.playerShip.vel_x << ", " << client.playerShip.vel_y << "\n";
+				// send it to client
+				{
+					MessageData newMessage;
+					newMessage.commandID = gameOver.id;
+					newMessage.sessionID = -1;// sending to the current client's id which is i 
+					newMessage.data = gameOver;
 
-			}*/
+					std::lock_guard<std::mutex> lock(lockMutex);
+					messageQueue.push(newMessage);
+				}
+
+			}
 		}
 
 
@@ -362,7 +382,7 @@ int main()
 			lastWaveTime = currTime;
 
 			
-			if (serverData.gameRunning && (serverData.activeAsteroids + 8) < MAX_ASTEROIDS )
+			if (serverData.gameRunning && (serverData.activeAsteroids + 8) <= MAX_ASTEROIDS )
 			{
 				std::vector<Asteroid> newAsteroids;
 
@@ -743,10 +763,12 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				uint64_t timeDiff;
 				int shipID;
 				uint32_t score;
+				uint32_t j, i;
 
-				bulletCollide >> shipID >> timeDiff >> score;
+				bulletCollide >> shipID >> timeDiff >> j >> i >> score;
 				serverData.totalClients[shipID].playerShip.score = score;
 
+				ForwardPacket(recvAddr, buffer, recvLen);
 				break;
 			}
 			default:
@@ -939,6 +961,7 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 		replyPacket << info.playerShip.vel_x;
 		replyPacket << info.playerShip.vel_y;
 		replyPacket << info.playerShip.dirCur;
+		replyPacket << info.playerShip.score;
 	}
 	/*
 	
@@ -989,6 +1012,7 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 		newPlayerPacket << info.playerShip.vel_x;
 		newPlayerPacket << info.playerShip.vel_y;
 		newPlayerPacket << info.playerShip.dirCur;
+		newPlayerPacket << info.playerShip.score;
 	}
 	//newPlayerPacket << 1; // only 1 new player 
 	//newPlayerPacket << newClient.sessionID; // i think i should be packing the ID of the new client??
@@ -1074,6 +1098,7 @@ void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int 
 	shipMovement >> client.playerShip.vel_x;
 	shipMovement >> client.playerShip.vel_y;
 	shipMovement >> client.playerShip.dirCur;
+	shipMovement >> client.playerShip.score;
 
 
 	{
