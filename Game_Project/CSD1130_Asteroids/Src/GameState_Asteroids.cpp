@@ -1043,6 +1043,29 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		gameData.spShip[clientID]->active = true;
 		gameData.currID = clientID;
 
+		int totalAsteroids;
+		msg >> totalAsteroids;
+
+		if (totalAsteroids > 0)
+		{
+			for (int i = 0; i < totalAsteroids; ++i)
+			{
+				AEVec2 pos;
+				AEVec2 vel;
+				AEVec2 scale;
+				scale.x = 20.0f;
+				scale.y = 20.0f;
+				float dirCur;
+				int id;
+				msg >> id >> pos.x >> pos.y >> vel.x >> vel.y >> dirCur;
+
+
+				GameObjInst* asteroid = CreateAsteroid(pos, vel, scale, dirCur);
+				asteroid->active = true;
+				asteroid->serverID = id;
+			}
+		}
+
 		break;
 
 	}

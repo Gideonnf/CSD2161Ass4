@@ -21,6 +21,7 @@ struct Ship
 };
 struct Asteroid
 {
+	std::chrono::steady_clock::time_point creationTime;
 	int ID;
 	float xPos;
 	float yPos;

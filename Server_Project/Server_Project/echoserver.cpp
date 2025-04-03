@@ -76,7 +76,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define REQ_GET_SCORES ((unsigned char)0x8)
 #define RSP_GET_SCORES ((unsigned char)0x9)
 #define SLEEP_TIME 0
-
+const float			FIXED_DELTA_TIME = 0.01667f; // Fixed time step for 60 FPS
 #define X_SIZE 640
 #define Y_SIZE 360
 const float         ASTEROID_ACCEL = 100.0f;
@@ -87,6 +87,7 @@ void HandleSubmitScore(char *buffer, SOCKET clientSocket);
 void ProcessPlayerDisconnect(const char *buffer, int recvLen);
 void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int recvLen);
 void HandleGetScores(SOCKET clientSocket);
+void FixedUpdate();
 void UDPSendingHandler();
 void UDPReceiveHandler(SOCKET udpListenerSocket);
 void ProcessShipMovement(const sockaddr_in& clientAddr, const char* buffer, int recvLen);
@@ -118,6 +119,7 @@ SOCKET udpListenerSocket = INVALID_SOCKET;
 std::string filePath;
 std::mt19937 generator;
 std::uniform_real_distribution dis(0.0, 1.0);
+double accumulatedTime = 0.0;
 
 bool debugPrint = false;
 
@@ -165,6 +167,7 @@ Asteroid RandomiseAsteroid(float min_xPos, float max_xPos, float min_yPos, float
 	newAsteroid.xScale = randScaleX;
 	newAsteroid.yScale = randScaleY;
 	newAsteroid.active = true;
+	newAsteroid.creationTime = std::chrono::steady_clock::now();
 
 	for (int i = 0; i < MAX_ASTEROIDS; ++i)
 	{
@@ -309,6 +312,7 @@ int main()
 		return RETURN_CODE_2;
 	}
 	std::thread udpThread(UDPReceiveHandler, udpListenerSocket);
+	//std::thread fixedUpdateThread(FixedUpdate);
 	//std::thread udpSendThread(UDPSendingHandler);
 
 	const auto interval = std::chrono::duration<double>(0.005); // every 5 ms? idk for now
@@ -741,6 +745,11 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 	}
 }
 
+//void FixedUpdate()
+//{
+//	accumulatedTime += 
+//}
+
 void HandleGetScores(SOCKET clientSocket)
 {
 	char message[MAX_STR_LEN];
@@ -896,13 +905,24 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 
 	/*
 	
-						asteroidPacket << newAsteroids[i].ID;
+					asteroidPacket << newAsteroids[i].ID;
 					asteroidPacket << newAsteroids[i].xPos;
 					asteroidPacket << newAsteroids[i].yPos;
 					asteroidPacket << newAsteroids[i].vel_x;
 					asteroidPacket << newAsteroids[i].vel_y;
 					asteroidPacket << newAsteroids[i].dirCur;
 */
+
+	auto currTime = std::chrono::steady_clock::now();
+	for (int i = 0; i < MAX_ASTEROIDS; ++i)
+	{
+		if (serverData.totalAsteroids[i].active == false) continue;
+
+		auto elapsedTime = std::chrono::duration_cast<std::chrono::seconds>(currTime - serverData.totalAsteroids[i].creationTime).count();
+		serverData.totalAsteroids[i].xPos += serverData.totalAsteroids[i].vel_x * elapsedTime;
+		serverData.totalAsteroids[i].yPos += serverData.totalAsteroids[i].vel_y * elapsedTime;
+
+	}
 
 	replyPacket << serverData.activeAsteroids; 
 	// send any asteroids that exist in the server
