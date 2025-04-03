@@ -1286,13 +1286,52 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 	break;
 	case CLIENT_REQ_HIGHSCORE:
 	{
-		msg >> clientID;
-		uint64_t timeDiff;
-		msg >> timeDiff;
+		struct PlayerScore
+		{
+			std::string playerName;
+			uint32_t score;
 
-		std::cout << "Player " << clientID << " pressed TAB at time " << timeDiff << std::endl;
+			// Constructor
+			PlayerScore(const std::string &name = "", uint32_t playerScore = 0)
+				: score(playerScore)
+			{
+				// Ensure playerName fits within 20 characters
+				if (name.size() > 20)
+				{
+					playerName = name.substr(0, 20);  // Truncate if longer than 20 characters
+				}
+				else
+				{
+					playerName = name;  // Copy the name if it fits within 20 characters
+				}
+			}
 
-		// Additional logic here if needed (e.g., triggering an event)
+			// Operator for sorting scores (highest first)
+			bool operator<(const PlayerScore &other) const
+			{
+				return score > other.score; // Descending order
+			}
+		};
+		uint16_t numScores;
+		msg >> numScores; // Read the number of high scores
+
+		std::vector<PlayerScore> highScores; // Adjust if score type differs
+
+		for (uint16_t i = 0; i < numScores; ++i)
+		{
+			std::string playerName;
+			uint32_t score; // Change to uint32_t if necessary
+
+			msg >> playerName >> score; // Extract player name and score
+			highScores.emplace_back(playerName, score);
+		}
+
+		// Print the received high scores
+		std::cout << "High Scores:\n";
+		for (const auto &entry : highScores)
+		{
+			std::cout << entry.playerName << ": " << entry.score << " points\n";
+		}
 		break;
 	}
 	break;

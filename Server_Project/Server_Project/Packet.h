@@ -393,15 +393,20 @@ inline Packet& operator>>(Packet& packet, uint64_t& data)
 
 #pragma region STRING SPECIALIZATION
 template <>
-inline Packet& operator<< (Packet& packet, const std::string& data)
+inline Packet &operator<< (Packet &packet, const std::string &data)
 {
-	//uint32_t netVal = htonl(static_cast<uint32_t>(data));
-	// note idk if this act works tbh
-	// until we can test highscore
-	std::memcpy(packet.body + packet.writePos, data.c_str(), data.length());
-	packet.writePos += data.length();;
+	// Truncate to 20 characters if necessary
+	std::string truncatedData = data.substr(0, 20);  // Ensure max 20 chars
+
+	// Copy the data into the packet
+	std::memcpy(packet.body + packet.writePos, truncatedData.c_str(), truncatedData.length());
+
+	// Update the write position
+	packet.writePos += 20;  // Always write exactly 20 bytes, even if padded with nulls
+
 	return packet;
 }
+
 
 template <>
 inline Packet& operator>>(Packet& packet, std::string& data)
