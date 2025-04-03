@@ -286,6 +286,21 @@ void GameStateAsteroidsInit(void)
 	gameData.textList[3].Font = &textFont;
 	gameData.textList[3].str = "Press B to go back to menu";
 
+	AEVec2Set(&gameData.textList[4].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f));
+	gameData.textList[4].textSize = 20;
+	gameData.textList[4].Font = &textFont;
+	gameData.textList[4].str = "Score: ";
+
+	AEVec2Set(&gameData.textList[5].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - 20);
+	gameData.textList[5].textSize = 20;
+	gameData.textList[5].Font = &textFont;
+	gameData.textList[5].str = "Score: ";
+
+	AEVec2Set(&gameData.textList[6].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - 40);
+	gameData.textList[6].textSize = 20;
+	gameData.textList[6].Font = &textFont;
+	gameData.textList[6].str = "Score: ";
+
 
 	// create the main ship
 	// i think sending info of ship will be done in update
@@ -406,7 +421,7 @@ void GameStateAsteroidsUpdate(void)
 			vel.x = BULLET_SPEED * cosf(gameData.spShip[gameData.currID]->dirCurr);
 			vel.y = BULLET_SPEED * sinf(gameData.spShip[gameData.currID]->dirCurr);
 			AEVec2Set(&scale, BULLET_SCALE_X, BULLET_SCALE_Y);
-			GameObjInst* bulletObj = bulletObjInstCreate(&pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
+			GameObjInst *bulletObj = bulletObjInstCreate(&pos, &vel, gameData.spShip[gameData.currID]->dirCurr);
 			{
 				Packet pck(CMDID::BULLET_CREATED);
 				pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << bulletObj->serverID << pos.x << pos.y << vel.x << vel.y << gameData.spShip[gameData.currID]->dirCurr;
@@ -560,7 +575,7 @@ void GameStateAsteroidsDraw(void)
 	}
 
 	// Handles the rendering of texture objects
-	for (int i = 0; i < 4; ++i)
+	for (int i = 0; i < 7; ++i)
 	{
 		// Specific checks so  certain text dont render until required
 		if (!gameOver && (i == 1 || i == 2 || i == 3)) continue;
@@ -577,10 +592,16 @@ void GameStateAsteroidsDraw(void)
 		// 0 is for score
 		// 1 2 and 3 is for game over texts
 		// They need to pass in the values when rendering
-		if (i == 0)
-			snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sScore);
-		else
+		if (i == 1 || i == 2 || i == 3)
 			snprintf(strBuffer, sizeof(strBuffer), "%s", gameData.textList[i].str);
+		else if (i == 0)
+			snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sScore);
+		else if (i == 4)
+			snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sp2Score);
+		else if (i == 5)
+			snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sp3Score);
+		else if (i == 6)
+			snprintf(strBuffer, sizeof(strBuffer), "%s %d", gameData.textList[i].str, gameData.sp4Score);
 
 		// Render the text object after assigning the string val
 		RenderText(&gameData.textList[i], fontSize, strBuffer);
@@ -914,10 +935,10 @@ void CheckGOCollision()
 								NetworkClient::Instance().CreateMessage(pck);
 
 								Packet pck2(CMDID::SHIP_MOVE);
-								pck2 << pInst_2->serverID  << NetworkClient::Instance().GetTimeDiff() << 0 <<
-									gameData.spShip[pInst_2->serverID ]->posCurr.x << gameData.spShip[pInst_2->serverID ]->posCurr.y <<
-									gameData.spShip[pInst_2->serverID ]->velCurr.x << gameData.spShip[pInst_2->serverID ]->velCurr.y <<
-									gameData.spShip[pInst_2->serverID ]->dirCurr;
+								pck2 << pInst_2->serverID << NetworkClient::Instance().GetTimeDiff() << 0 <<
+									gameData.spShip[pInst_2->serverID]->posCurr.x << gameData.spShip[pInst_2->serverID]->posCurr.y <<
+									gameData.spShip[pInst_2->serverID]->velCurr.x << gameData.spShip[pInst_2->serverID]->velCurr.y <<
+									gameData.spShip[pInst_2->serverID]->dirCurr;
 								NetworkClient::Instance().CreateMessage(pck2);
 							}
 						}

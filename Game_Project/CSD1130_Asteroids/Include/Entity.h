@@ -131,6 +131,9 @@ struct GameData
 
 	// the score = number of asteroid destroyed
 	uint32_t		sScore;										// Current score
+	uint32_t		sp2Score;										// Current score
+	uint32_t		sp3Score;										// Current score
+	uint32_t		sp4Score;										// Current score
 
 	bool onValueChange = true;
 
@@ -138,7 +141,7 @@ struct GameData
 	TextObj endText;
 	TextObj endText2;
 
-	TextObj textList[4];
+	TextObj textList[7];
 	
 	int currID{};
 
