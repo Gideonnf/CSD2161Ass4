@@ -17,6 +17,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include "AEEngine.h"
 #include "AEMath.h"
 #include "Collision.h"
+#include <unordered_map>
 
 struct BGObject
 {
@@ -140,6 +141,8 @@ struct GameData
 	TextObj textList[4];
 	
 	int currID{};
+
+	std::unordered_map<int, GameObjInst*> asteroidMap;
 };
 
 

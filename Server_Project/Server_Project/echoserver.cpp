@@ -515,6 +515,7 @@ int main()
 
 					break;
 				}
+				case ASTEROID_UPDATE:
 				case ASTEROID_CREATED:
 				{
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
@@ -936,32 +937,6 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 					asteroidPacket << newAsteroids[i].dirCur;
 */
 
-	auto currTime = std::chrono::steady_clock::now();
-	for (int i = 0; i < MAX_ASTEROIDS; ++i)
-	{
-		if (serverData.totalAsteroids[i].active == false) continue;
-
-		auto elapsedTime = std::chrono::duration_cast<std::chrono::seconds>(currTime - serverData.totalAsteroids[i].creationTime).count();
-		serverData.totalAsteroids[i].xPos += serverData.totalAsteroids[i].vel_x * elapsedTime;
-		serverData.totalAsteroids[i].yPos += serverData.totalAsteroids[i].vel_y * elapsedTime;
-
-	}
-
-	replyPacket << serverData.activeAsteroids; 
-	// send any asteroids that exist in the server
-	for (int i = 0; i < MAX_ASTEROIDS; ++i)
-	{
-		if (serverData.totalAsteroids[i].active == false) continue;
-
-		replyPacket << i;
-		replyPacket << serverData.totalAsteroids[i].xPos;
-		replyPacket << serverData.totalAsteroids[i].yPos;
-		replyPacket << serverData.totalAsteroids[i].vel_x;
-		replyPacket << serverData.totalAsteroids[i].vel_y;
-		replyPacket << serverData.totalAsteroids[i].dirCur;
-
-	}
-
 	//std::string message = replyPacket.ToString(); 
 	// send to the client
 	{
@@ -1012,6 +987,45 @@ void ProcessPlayerJoin(const sockaddr_in &clientAddr, const char *buffer, int re
 		newMessage.commandID = newPlayerPacket.id;
 		newMessage.sessionID = newClient.sessionID;// sending to the current client's id which is i 
 		newMessage.data = newPlayerPacket;
+
+		std::lock_guard<std::mutex> lock(lockMutex);
+		messageQueue.push(newMessage);
+	}
+
+	Packet updateAsteroids(ASTEROID_UPDATE);
+
+	auto currTime = std::chrono::steady_clock::now();
+	for (int i = 0; i < MAX_ASTEROIDS; ++i)
+	{
+		if (serverData.totalAsteroids[i].active == false) continue;
+
+		auto elapsedTime = std::chrono::duration_cast<std::chrono::seconds>(currTime - serverData.totalAsteroids[i].creationTime).count();
+		serverData.totalAsteroids[i].xPos += serverData.totalAsteroids[i].vel_x * elapsedTime;
+		serverData.totalAsteroids[i].yPos += serverData.totalAsteroids[i].vel_y * elapsedTime;
+
+	}
+
+	updateAsteroids << serverData.activeAsteroids;
+	// send any asteroids that exist in the server
+	for (int i = 0; i < MAX_ASTEROIDS; ++i)
+	{
+		if (serverData.totalAsteroids[i].active == false) continue;
+
+		updateAsteroids << i;
+		updateAsteroids << serverData.totalAsteroids[i].xPos;
+		updateAsteroids << serverData.totalAsteroids[i].yPos;
+		updateAsteroids << serverData.totalAsteroids[i].vel_x;
+		updateAsteroids << serverData.totalAsteroids[i].vel_y;
+		updateAsteroids << serverData.totalAsteroids[i].dirCur;
+
+	}
+
+
+	{
+		MessageData newMessage;
+		newMessage.commandID = updateAsteroids.id;
+		//newMessage.sessionID = newClient.sessionID;// sending to the current client's id which is i 
+		newMessage.data = updateAsteroids;
 
 		std::lock_guard<std::mutex> lock(lockMutex);
 		messageQueue.push(newMessage);

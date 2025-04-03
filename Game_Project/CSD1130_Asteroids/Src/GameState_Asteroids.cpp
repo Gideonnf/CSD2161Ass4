@@ -1153,9 +1153,48 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 			GameObjInst* asteroid = CreateAsteroid(pos, vel, scale, dirCur);
 			asteroid->active = true;
 			asteroid->serverID = id;
+			gameData.asteroidMap[id] = asteroid;
 		}
 		//ProcessNewAsteroid(msg, data);
 		break;
+	case ASTEROID_UPDATE:
+	{
+		int numOfAsteroids;
+		msg >> numOfAsteroids;
+		for (int i = 0; i < numOfAsteroids; ++i)
+		{
+			int asteroidID;
+			msg >> asteroidID;
+			AEVec2 pos;
+			AEVec2 vel;
+			AEVec2 scale;
+			scale.x = 20.0f;
+			scale.y = 20.0f;
+			float dirCur;
+			msg >> pos.x >> pos.y >> vel.x >> vel.y >> dirCur;
+
+			if (gameData.asteroidMap.count(asteroidID) > 0)
+			{
+
+				// exist
+				gameData.asteroidMap[asteroidID]->posCurr = pos;
+				gameData.asteroidMap[asteroidID]->velCurr = vel;
+				gameData.asteroidMap[asteroidID]->dirCurr = dirCur;
+
+			}
+			else
+			{
+				// it hasn't been created yet
+				// usually for new clients
+				GameObjInst* asteroid = CreateAsteroid(pos, vel, scale, dirCur);
+				asteroid->active = true;
+				asteroid->serverID = asteroidID;
+				gameData.asteroidMap[asteroidID] = asteroid;
+			}
+		}
+
+		break;
+	}
 	case BULLET_CREATED:
 	{
 		// "Time:" << NetworkClient::Instance().GetTimeDiff() << ' ' <<
