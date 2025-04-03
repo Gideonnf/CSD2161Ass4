@@ -517,7 +517,7 @@ void GameStateAsteroidsUpdate(void)
 			pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << playerInput <<
 				gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
 				gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
-				gameData.spShip[gameData.currID]->dirCurr;
+				gameData.spShip[gameData.currID]->dirCurr << gameData.playerScores[gameData.currID];
 			NetworkClient::Instance().CreateMessage(pck);
 
 
@@ -957,7 +957,7 @@ void CheckGOCollision()
 								pck2 << pInst_2->serverID << NetworkClient::Instance().GetTimeDiff() << 0 <<
 									gameData.spShip[pInst_2->serverID]->posCurr.x << gameData.spShip[pInst_2->serverID]->posCurr.y <<
 									gameData.spShip[pInst_2->serverID]->velCurr.x << gameData.spShip[pInst_2->serverID]->velCurr.y <<
-									gameData.spShip[pInst_2->serverID]->dirCurr;
+									gameData.spShip[pInst_2->serverID]->dirCurr << gameData.playerScores[pInst_2->serverID];
 								NetworkClient::Instance().CreateMessage(pck2);
 							}
 						}
