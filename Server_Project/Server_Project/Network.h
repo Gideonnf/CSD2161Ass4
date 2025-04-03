@@ -3,6 +3,7 @@
 #include "Game.h"
 
 #define MAX_CONNECTION 4
+#define MAX_ASTEROIDS 50
 
 struct ClientInfo
 {
@@ -27,7 +28,10 @@ struct ServerData
 	std::unordered_map<std::string, int> playerMap;
 
 	// store a vector of all asteroids or smth
-	std::vector<Asteroid> asteroids;
+	//std::vector<Asteroid> asteroids;
+	Asteroid totalAsteroids[MAX_ASTEROIDS];
+
+	int activeAsteroids = 0;
 	// power ups
 
 	// idk what else u want
