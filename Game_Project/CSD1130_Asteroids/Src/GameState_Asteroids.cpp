@@ -1040,7 +1040,7 @@ void ProcessPacketMessages(Packet& msg, GameData& data)
 		msg >> clientID;
 		gameData.spShip[clientID]->active = true;
 		gameData.currID = clientID;
-
+		NetworkClient::Instance().SetShutdownPCK(clientID);
 		break;
 
 	}

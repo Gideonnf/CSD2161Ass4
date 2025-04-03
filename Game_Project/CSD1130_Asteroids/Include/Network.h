@@ -39,7 +39,9 @@ public:
 
 	int Init();
 	void Shutdown();
+	void SetShutdownPCK(int currID);
 	void SendMessages(SOCKET clientSocket);
+	void SendSingularMessage(SOCKET clientSocket, Packet msg);
 	void ReceiveMessages(SOCKET udpSocket);
 	Packet GetIncomingMessage();
 	void CreateMessage(Packet msg);
@@ -61,6 +63,7 @@ private:
 
 	std::chrono::steady_clock::time_point gameStartTime;
 
+	Packet shutdownPck;
 
 	// use mutex to share a queue between game loop and threads
 	/*
