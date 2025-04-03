@@ -889,21 +889,24 @@ void CheckGOCollision()
 						// Destroy the asteroid and update the ship live
 						gameObjInstDestroy(pInst_1);
 
-						ResetShip();
-
+						if (pInst_2->serverID == gameData.currID)
 						{
-							Packet pck(CMDID::SHIP_COLLIDE);
-							pck << gameData.currID << NetworkClient::Instance().GetTimeDiff() << i;
-							//	"Time:" << timestamp << ' ' <<
-							//	"AsteroidID:" << i;
-							NetworkClient::Instance().CreateMessage(pck);
+							ResetShip();
 
-							Packet pck2(CMDID::SHIP_MOVE);
-							pck2 << gameData.currID << NetworkClient::Instance().GetTimeDiff() << 0 <<
-								gameData.spShip[gameData.currID]->posCurr.x << gameData.spShip[gameData.currID]->posCurr.y <<
-								gameData.spShip[gameData.currID]->velCurr.x << gameData.spShip[gameData.currID]->velCurr.y <<
-								gameData.spShip[gameData.currID]->dirCurr;
-							NetworkClient::Instance().CreateMessage(pck2);
+							{
+								Packet pck(CMDID::SHIP_COLLIDE);
+								pck << pInst_2->serverID << NetworkClient::Instance().GetTimeDiff() << i;
+								//	"Time:" << timestamp << ' ' <<
+								//	"AsteroidID:" << i;
+								NetworkClient::Instance().CreateMessage(pck);
+
+								Packet pck2(CMDID::SHIP_MOVE);
+								pck2 << pInst_2->serverID  << NetworkClient::Instance().GetTimeDiff() << 0 <<
+									gameData.spShip[pInst_2->serverID ]->posCurr.x << gameData.spShip[pInst_2->serverID ]->posCurr.y <<
+									gameData.spShip[pInst_2->serverID ]->velCurr.x << gameData.spShip[pInst_2->serverID ]->velCurr.y <<
+									gameData.spShip[pInst_2->serverID ]->dirCurr;
+								NetworkClient::Instance().CreateMessage(pck2);
+							}
 						}
 
 					}
@@ -1049,6 +1052,7 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 	{
 		msg >> clientID;
 		gameData.spShip[clientID]->active = true;
+		gameData.spShip[clientID]->serverID = clientID;
 		gameData.currID = clientID;
 
 		int totalAsteroids;
@@ -1096,7 +1100,7 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 			msg >> (float)gameData.spShip[clientID]->velCurr.x;
 			msg >> (float)gameData.spShip[clientID]->velCurr.x;
 			msg >> gameData.spShip[clientID]->dirCurr;
-
+			gameData.spShip[clientID]->serverID = clientID;
 			gameData.spShip[clientID]->active = true;
 		}
 
@@ -1242,6 +1246,8 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 		msg >> gameData.spShip[clientID]->posCurr.x >> gameData.spShip[clientID]->posCurr.y >>
 			gameData.spShip[clientID]->velCurr.x >> gameData.spShip[clientID]->velCurr.y >>
 			gameData.spShip[clientID]->dirCurr;
+
+		gameData.spShip[clientID]->posPrev = gameData.spShip[clientID]->posCurr;
 	}
 	break;
 	case BULLET_COLLIDE:
