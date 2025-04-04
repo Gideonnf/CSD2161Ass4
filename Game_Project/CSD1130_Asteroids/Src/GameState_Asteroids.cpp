@@ -281,10 +281,6 @@ void GameStateAsteroidsInit(void)
 	gameData.textList[2].Font = &textFont;
 	gameData.textList[2].str = "Press R to restart";
 
-	AEVec2Set(&gameData.textList[3].pos, 0, -40);
-	gameData.textList[3].textSize = 12;
-	gameData.textList[3].Font = &textFont;
-	gameData.textList[3].str = "Press B to go back to menu";
 
 	AEVec2Set(&gameData.playerTextScores[0].pos, 0 - (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f));
 	gameData.playerTextScores[0].textSize = 20;
@@ -306,33 +302,38 @@ void GameStateAsteroidsInit(void)
 	gameData.playerTextScores[3].Font = &textFont;
 	gameData.playerTextScores[3].str = "Player 3: ";
 
+	AEVec2Set(&gameData.textList[3].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 0));
+	gameData.textList[3].textSize = 20;
+	gameData.textList[3].Font = &textFont;
+	gameData.textList[3].str = "High Scores";
+
 
 	// For index 0
-	AEVec2Set(&gameData.highScoreTextList[0].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 0));
+	AEVec2Set(&gameData.highScoreTextList[0].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 1));
 	gameData.highScoreTextList[0].textSize = 20;
 	gameData.highScoreTextList[0].Font = &textFont;
 	gameData.highScoreTextList[0].str = " ";
 
 	// For index 1
-	AEVec2Set(&gameData.highScoreTextList[1].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 1));
+	AEVec2Set(&gameData.highScoreTextList[1].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 2));
 	gameData.highScoreTextList[1].textSize = 20;
 	gameData.highScoreTextList[1].Font = &textFont;
 	gameData.highScoreTextList[1].str = " ";
 
 	// For index 2
-	AEVec2Set(&gameData.highScoreTextList[2].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 2));
+	AEVec2Set(&gameData.highScoreTextList[2].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 3));
 	gameData.highScoreTextList[2].textSize = 20;
 	gameData.highScoreTextList[2].Font = &textFont;
 	gameData.highScoreTextList[2].str = " ";
 
 	// For index 3
-	AEVec2Set(&gameData.highScoreTextList[3].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 3));
+	AEVec2Set(&gameData.highScoreTextList[3].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 4));
 	gameData.highScoreTextList[3].textSize = 20;
 	gameData.highScoreTextList[3].Font = &textFont;
 	gameData.highScoreTextList[3].str = " ";
 
 	// For index 4
-	AEVec2Set(&gameData.highScoreTextList[4].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 4));
+	AEVec2Set(&gameData.highScoreTextList[4].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 5));
 	gameData.highScoreTextList[4].textSize = 20;
 	gameData.highScoreTextList[4].Font = &textFont;
 	gameData.highScoreTextList[4].str = " ";
@@ -663,6 +664,10 @@ void GameStateAsteroidsDraw(void)
 
 	if (gameOver)
 	{
+		snprintf(strBuffer, sizeof(strBuffer), "%s", gameData.textList[3].str.c_str());
+
+		RenderText(&gameData.textList[3], fontSize, strBuffer);
+
 		for (int i = 0; i < 5; ++i)
 		{
 			if (i >= gameData.highScores.size()) continue;
