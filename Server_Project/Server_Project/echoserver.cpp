@@ -348,7 +348,7 @@ int main()
 			lastPrintTime = currTime;
 
 			// if no more asteroids can spawn and all are destroyed
-			if (serverData.activeAsteroids >= (MAX_ASTEROIDS - 1) && serverData.numOfAsteroids <= 0)
+			if (serverData.activeAsteroids >= (MAX_ASTEROIDS - 1) && serverData.numOfAsteroids <= 1)
 			{
 				// game over
 				Packet gameOverPkt(GAME_OVER);
@@ -364,10 +364,24 @@ int main()
 
 				gameOverPkt << winnerID;
 
+				LoadHighScores();
 				if (gameOver == false)
 				{
+
 					std::string playerName = "Player_" + std::to_string(winnerID);
-					UpdateHighScores(playerName, serverData.totalClients[winnerID].playerShip.score);
+
+					auto now = std::chrono::system_clock::now();
+					std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+
+					struct tm time_info;
+					// Use localtime_s for safer date-time conversion
+					localtime_s(&time_info, &now_time);
+
+					std::stringstream ss;
+					ss << std::put_time(&time_info, "%Y-%m-%d %H:%M:%S");
+
+					std::string time = ss.str();
+					UpdateHighScores(playerName, serverData.totalClients[winnerID].playerShip.score, time);
 					SaveHighScores();
 					gameOver = true;
 				}
@@ -381,6 +395,31 @@ int main()
 					std::lock_guard<std::mutex> lock(lockMutex);
 					messageQueue.push(newMessage);
 				}
+
+
+				// Create response packet
+				Packet highscorePacket(CLIENT_REQ_HIGHSCORE);
+
+				// Pack number of scores
+				uint16_t numScores = static_cast<uint16_t>(topScores.size());
+				highscorePacket << numScores;
+
+				// Pack each score
+				for (const auto& score : topScores)
+				{
+					highscorePacket << score.playerName << score.score << score.time;
+				}
+
+				{
+					MessageData highScoreMsg;
+					highScoreMsg.commandID = highscorePacket.id;
+					highScoreMsg.sessionID = -1;//client.sessionID; // Broadcast to all
+					highScoreMsg.data = highscorePacket;
+
+					std::lock_guard<std::mutex> lock(lockMutex);
+					messageQueue.push(highScoreMsg);
+				}
+
 
 			}
 		}
@@ -474,7 +513,7 @@ int main()
 
 				switch (msgID)
 				{
-				case CLIENT_REQ_HIGHSCORE:
+				//case CLIENT_REQ_HIGHSCORE:
 				case REPLY_PLAYER_JOIN:
 				{
 					// this only sends to 1 client
@@ -850,45 +889,6 @@ void HandleGetScores(SOCKET clientSocket)
 	// Send high scores to client
 	send(clientSocket, message, messageSize, 0);
 }
-void HandleSubmitScore(char *buffer, SOCKET clientSocket)
-{
-	int offset = 1;  // Skip command ID
-
-	// Get player name length
-	uint32_t nameLength;
-	memcpy(&nameLength, &buffer[offset], 4);
-	nameLength = ntohl(nameLength);
-	offset += 4;
-
-	// Extract the player name
-	std::string playerName(buffer + offset, nameLength);
-	offset += nameLength;
-
-	// Get the score
-	uint32_t score;
-	memcpy(&score, &buffer[offset], 4);
-	score = ntohl(score);
-
-	std::cout << "Received score from " << playerName << ": " << score << std::endl;
-
-	// Update high scores
-	bool addedToHighScores = UpdateHighScores(playerName, score);
-
-	// Send response
-	char message[MAX_STR_LEN];
-	unsigned int messageSize = 0;
-
-	message[0] = RSP_SUBMIT_SCORE;
-	messageSize += 1;
-
-	// Add success flag
-	uint8_t success = addedToHighScores ? 1 : 0;
-	memcpy(&message[messageSize], &success, 1);
-	messageSize += 1;
-
-	// Send response to client
-	send(clientSocket, message, messageSize, 0);
-}
 void ProcessPlayerDisconnect(const char *buffer, int recvLen)
 {
 	if (recvLen < 5) return; // Ensure buffer contains at least 5 bytes (1 for msgID + 4 for playerID)
@@ -1203,7 +1203,6 @@ void RespawnShip(uint32_t playerID)
 }
 void ClientHandleHighscoreRequest(const sockaddr_in &clientAddr, const char *buffer, int recvLen)
 {
-	LoadHighScores();
 
 	int offset = 1;
 
@@ -1221,6 +1220,7 @@ void ClientHandleHighscoreRequest(const sockaddr_in &clientAddr, const char *buf
 	returnPacket >> sessionID;
 	ClientInfo &client = serverData.totalClients[sessionID];
 
+	LoadHighScores();
 
 	// Create response packet
 	Packet highscorePacket(CLIENT_REQ_HIGHSCORE);
@@ -1232,27 +1232,7 @@ void ClientHandleHighscoreRequest(const sockaddr_in &clientAddr, const char *buf
 	// Pack each score
 	for (const auto &score : topScores)
 	{
-		highscorePacket << score.playerName << score.score;
-	}
-
-
-	uint16_t numOfPlayers = 0;
-
-	for (int i = 0; i < MAX_CONNECTION; ++i)
-	{
-		if (serverData.totalClients[i].connected == false) continue;
-
-		numOfPlayers++;
-	}
-
-	highscorePacket << numOfPlayers;
-
-	// i rlly dont wanna loop twice
-	for (int i = 0; i < MAX_CONNECTION; ++i)
-	{
-		if (serverData.totalClients[i].connected == false) continue;
-
-		highscorePacket << i << serverData.totalClients[i].playerShip.score;
+		highscorePacket << score.playerName << score.score << score.time;
 	}
 
 	{
@@ -1296,66 +1276,6 @@ void HandleHighscoreRequest(const sockaddr_in &clientAddr)
 	{
 		std::lock_guard<std::mutex> lock(lockMutex);
 		messageQueue.push(newMessage);
-	}
-}
-void HandleNewHighscore(const char *buffer, int recvLen, const sockaddr_in &clientAddr)
-{
-	if (recvLen < 1 + sizeof(uint32_t)) // Minimum: message ID + score
-	{
-		return; // Not enough data
-	}
-
-	int offset = 1; // Skip message ID
-
-	// Extract player name length
-	uint32_t nameLength;
-	memcpy(&nameLength, buffer + offset, sizeof(nameLength));
-	nameLength = ntohl(nameLength);
-	offset += sizeof(nameLength);
-
-	// Validate remaining length
-	if (recvLen < offset + nameLength + sizeof(uint32_t))
-	{
-		return; // Not enough data for name + score
-	}
-
-	// Extract player name
-	char playerName[20] = {};
-	std::memcpy(playerName, buffer + offset, 20);
-	offset += 20;
-	offset += nameLength;
-
-	// Extract score
-	uint32_t score;
-	memcpy(&score, buffer + offset, sizeof(score));
-	score = ntohl(score);
-
-	// Update high scores
-	bool added = UpdateHighScores(playerName, score);
-
-	// Create response packet
-	Packet responsePacket(NEW_HIGHSCORE);
-	responsePacket << static_cast<uint8_t>(added ? 1 : 0); // Success flag
-
-	// Prepare message for queue
-	MessageData newMessage;
-	newMessage.commandID = responsePacket.id;
-	newMessage.sessionID = -1; // Specific response, not broadcast
-	newMessage.data = responsePacket;
-
-	// Create target address (respond to submitter)
-	sockaddr_in targetAddr = clientAddr;
-
-	// Queue the message
-	{
-		std::lock_guard<std::mutex> lock(lockMutex);
-		messageQueue.push(newMessage);
-	}
-
-	// If score was added, broadcast updated high scores to all clients
-	if (added)
-	{
-		BroadcastHighScores();
 	}
 }
 void BroadcastHighScores()

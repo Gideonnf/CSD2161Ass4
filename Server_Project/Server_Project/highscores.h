@@ -10,10 +10,11 @@ struct PlayerScore
 {
     std::string playerName;
     uint32_t score;
+    std::string time;
 
     // Constructor
-    PlayerScore(const std::string &name = "", uint32_t playerScore = 0)
-        : score(playerScore)
+    PlayerScore(const std::string &name = "", uint32_t playerScore = 0, std::string _time = "")
+        : score(playerScore), time(_time)
     {
         // Ensure playerName fits within 20 characters
         if (name.size() > 20)
@@ -60,12 +61,12 @@ void LoadHighScores()
     while (std::getline(scoreFile, line) && topScores.size() < MAX_HIGH_SCORES)
     {
         std::istringstream iss(line);
-        std::string name;
+        std::string name, time;
         uint32_t score;
 
-        if (iss >> name >> score)
+        if (iss >> name >> score >> time)
         {
-            topScores.push_back(PlayerScore(name, score));
+            topScores.push_back(PlayerScore(name, score, time));
         }
     }
 
@@ -92,7 +93,7 @@ void SaveHighScores()
 
     for (const auto &score : topScores)
     {
-        scoreFile << score.playerName << " " << score.score << std::endl;
+        scoreFile << score.playerName << " " << score.score << " " << score.time << std::endl;
     }
 
     scoreFile.close();
@@ -100,20 +101,20 @@ void SaveHighScores()
 
 }
 // Update high scores with a new score
-bool UpdateHighScores(const std::string &playerName, uint32_t score)
+bool UpdateHighScores(const std::string &playerName, uint32_t score, std::string time)
 {
     bool scoreAdded = false;
 
     // If we have fewer than MAX_HIGH_SCORES, add the score
     if (topScores.size() < MAX_HIGH_SCORES)
     {
-        topScores.push_back(PlayerScore(playerName, score));
+        topScores.push_back(PlayerScore(playerName, score, time));
         scoreAdded = true;
     }
     // Otherwise, check if this score is higher than the lowest current score
     else if (score > topScores.back().score)
     {
-        topScores.back() = PlayerScore(playerName, score);
+        topScores.back() = PlayerScore(playerName, score, time);
         scoreAdded = true;
     }
 

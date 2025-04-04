@@ -1,4 +1,4 @@
-/******************************************************************************/
+﻿/******************************************************************************/
 /*!
 \file		GameState_Asteroids.cpp
 \author 	Gideon Francis, g.francis, 2301207
@@ -307,6 +307,38 @@ void GameStateAsteroidsInit(void)
 	gameData.playerTextScores[3].str = "Player 3: ";
 
 
+	// For index 0
+	AEVec2Set(&gameData.highScoreTextList[0].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 0));
+	gameData.highScoreTextList[0].textSize = 20;
+	gameData.highScoreTextList[0].Font = &textFont;
+	gameData.highScoreTextList[0].str = " ";
+
+	// For index 1
+	AEVec2Set(&gameData.highScoreTextList[1].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 1));
+	gameData.highScoreTextList[1].textSize = 20;
+	gameData.highScoreTextList[1].Font = &textFont;
+	gameData.highScoreTextList[1].str = " ";
+
+	// For index 2
+	AEVec2Set(&gameData.highScoreTextList[2].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 2));
+	gameData.highScoreTextList[2].textSize = 20;
+	gameData.highScoreTextList[2].Font = &textFont;
+	gameData.highScoreTextList[2].str = " ";
+
+	// For index 3
+	AEVec2Set(&gameData.highScoreTextList[3].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 3));
+	gameData.highScoreTextList[3].textSize = 20;
+	gameData.highScoreTextList[3].Font = &textFont;
+	gameData.highScoreTextList[3].str = " ";
+
+	// For index 4
+	AEVec2Set(&gameData.highScoreTextList[4].pos, 0 + (SCREEN_WIDTH / 2.5f), (SCREEN_HEIGHT * 0.45f) - (20 * 4));
+	gameData.highScoreTextList[4].textSize = 20;
+	gameData.highScoreTextList[4].Font = &textFont;
+	gameData.highScoreTextList[4].str = " ";
+
+
+
 	// create the main ship
 	// i think sending info of ship will be done in update
 	AEVec2 scale;
@@ -442,14 +474,14 @@ void GameStateAsteroidsUpdate(void)
 			}
 
 		}
-		if (AEInputCheckTriggered(AEVK_TAB))
-		{
-			Packet pck(CLIENT_REQ_HIGHSCORE);
-			pck << gameData.currID << NetworkClient::Instance().GetTimeDiff();
+		//if (AEInputCheckTriggered(AEVK_TAB))
+		//{
+		//	Packet pck(CLIENT_REQ_HIGHSCORE);
+		//	pck << gameData.currID << NetworkClient::Instance().GetTimeDiff();
 
-			// Send packet to server
-			NetworkClient::Instance().CreateMessage(pck);
-		}
+		//	// Send packet to server
+		//	NetworkClient::Instance().CreateMessage(pck);
+		//}
 
 		// Save previous positions
 		//  -- For all instances
@@ -627,6 +659,19 @@ void GameStateAsteroidsDraw(void)
 
 		// Render the text object after assigning the string val
 		RenderText(&gameData.textList[i], fontSize, strBuffer);
+	}
+
+	if (gameOver)
+	{
+		for (int i = 0; i < 5; ++i)
+		{
+			if (i >= gameData.highScores.size()) continue;
+
+			std::string str = gameData.highScores[i].playerName + " " + std::to_string(gameData.highScores[i].score) + " " + gameData.highScores[i].time;
+
+			snprintf(strBuffer, sizeof(strBuffer), "%s", str.c_str());
+			RenderText(&gameData.highScoreTextList[i], fontSize, strBuffer);
+		}
 	}
 
 	for (int i = 0; i < 4; ++i)
@@ -1376,75 +1421,68 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 	break;
 	case CLIENT_REQ_HIGHSCORE:
 	{
-		struct PlayerScore
-		{
-			std::string playerName;
-			uint32_t score;
-
-			// Constructor
-			PlayerScore(const std::string &name = "", uint32_t playerScore = 0)
-				: score(playerScore)
-			{
-				// Ensure playerName fits within 20 characters
-				if (name.size() > 20)
-				{
-					playerName = name.substr(0, 20);  // Truncate if longer than 20 characters
-				}
-				else
-				{
-					playerName = name;  // Copy the name if it fits within 20 characters
-				}
-			}
-
-			// Operator for sorting scores (highest first)
-			bool operator<(const PlayerScore &other) const
-			{
-				return score > other.score; // Descending order
-			}
-		};
 		uint16_t numScores;
 		msg >> numScores; // Read the number of high scores
+		gameData.highScores.clear();
 
-		std::vector<PlayerScore> highScores; // Adjust if score type differs
-
+		
 		for (uint16_t i = 0; i < numScores; ++i)
 		{
 			std::string playerName;
 			uint32_t score; // Change to uint32_t if necessary
+			std::string time;
 
-			msg >> playerName >> score; // Extract player name and score
-			highScores.emplace_back(playerName, score);
+			msg >> playerName >> score >> time; // Extract player name and score
+			gameData.highScores.emplace_back(playerName, score, time);
 		}
 
-		uint16_t numOfPlayers;
-		msg >> numOfPlayers; // Read the number of high scores
-
-
-		int index{};
-		for (uint16_t i = 0; i < numOfPlayers; ++i)
+	/*	for (int i = 0; i < numScores; ++i)
 		{
-			std::string playerName;
-			uint32_t score;
-			int playerID;
-			msg >> playerID >> score;
-			//currentScores.emplace_back("player " + std::to_string(playerID), score);
+			std::string str = gameData.highScores[i].playerName + " " + std::to_string(gameData.highScores[i].score) + " " + gameData.highScores[i].time;
+			gameData.highScoreList[i].str = str;
+		}*/
 
-			if (playerID == gameData.currID)
-			{
-				// This is the local player; ignore and don't assign to sp2/sp3/sp4
-				continue;
-			}
+		/*
+		
+		
+	for (int i = 0; i < 5; ++i)
+	{
+		AEVec2Set(&gameData.highScoreList[i].pos, 0 , (SCREEN_HEIGHT * 0.45f) - (20 * i));
+		gameData.highScoreList[i].textSize = 20;
+		gameData.highScoreList[i].Font = &textFont;
+		gameData.highScoreList[i].str = " ";
+	}
+		*/
 
-			if (playerID < 4)
-				gameData.playerScores[playerID] = score;
-		}
+		//uint16_t numOfPlayers;
+		//msg >> numOfPlayers; // Read the number of high scores
+
+
+		//int index{};
+		//for (uint16_t i = 0; i < numOfPlayers; ++i)
+		//{
+		//	std::string playerName;
+		//	uint32_t score;
+		//	int playerID;
+		//	msg >> playerID >> score;
+		//	//currentScores.emplace_back("player " + std::to_string(playerID), score);
+
+		//	if (playerID == gameData.currID)
+		//	{
+		//		// This is the local player; ignore and don't assign to sp2/sp3/sp4
+		//		continue;
+		//	}
+
+		//	if (playerID < 4)
+		//		gameData.playerScores[playerID] = score;
+		//}
 
 		// Print the received high scores
-		std::cout << "High Scores:\n";
-		for (const auto &entry : highScores)
-		{
-			std::cout << entry.playerName << ": " << entry.score << " points\n";
-		}
+		//std::cout << "High Scores:\n";
+		//for (const auto &entry : highScores)
+		//{
+		//	std::cout << entry.playerName << ": " << entry.score << " points\n";
+		//}
 
 	/*	std::cout << "Current Scores:\n";
 		for (const auto& entry : currentScores)

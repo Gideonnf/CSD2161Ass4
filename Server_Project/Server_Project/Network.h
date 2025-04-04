@@ -3,7 +3,7 @@
 #include "Game.h"
 
 #define MAX_CONNECTION 4
-#define MAX_ASTEROIDS 96
+#define MAX_ASTEROIDS 8
 
 struct ClientInfo
 {

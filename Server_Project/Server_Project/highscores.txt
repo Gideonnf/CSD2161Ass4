@@ -1,5 +1,2 @@
-Player_0 1100
-pipi 100
-yaaaa 100
-helpme 100
-testing 100
+Player_0 1100 2025-04-04
+Player_1 700 2025-04-04 15:51:27

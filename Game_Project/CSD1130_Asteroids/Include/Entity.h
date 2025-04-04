@@ -39,6 +39,34 @@ struct ButtonObj
 	int bounce;
 };
 
+struct PlayerScore
+{
+	std::string playerName;
+	uint32_t score;
+	std::string time;
+
+	// Constructor
+	PlayerScore(const std::string& name = "", uint32_t playerScore = 0, std::string _time = "")
+		: score(playerScore), time(_time)
+	{
+		// Ensure playerName fits within 20 characters
+		if (name.size() > 20)
+		{
+			playerName = name.substr(0, 20);  // Truncate if longer than 20 characters
+		}
+		else
+		{
+			playerName = name;  // Copy the name if it fits within 20 characters
+		}
+	}
+
+	// Operator for sorting scores (highest first)
+	bool operator<(const PlayerScore& other) const
+	{
+		return score > other.score; // Descending order
+	}
+};
+
 struct TextObj
 {
 	std::string str;
@@ -143,9 +171,10 @@ struct GameData
 	TextObj endText2;
 
 	TextObj textList[4];
+	TextObj highScoreTextList[5];
 	TextObj playerTextScores[4];
 	uint32_t playerScores[4];
-
+	std::vector<PlayerScore> highScores; // Adjust if score type differs
 	int currID{};
 
 	std::unordered_map<int, GameObjInst*> asteroidMap;
