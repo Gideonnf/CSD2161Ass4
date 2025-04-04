@@ -18,6 +18,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include "AEMath.h"
 #include "Collision.h"
 #include <unordered_map>
+#include <string> 
 
 struct BGObject
 {

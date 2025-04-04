@@ -780,6 +780,27 @@ void UDPReceiveHandler(SOCKET udpListenerSocket)
 				ForwardPacket(recvAddr, buffer, recvLen);
 				break;
 			}
+			case SHIP_SCORE:
+			{
+				int offset = 1;
+				// get rid of header data
+				uint32_t msgLength;
+				std::memcpy(&msgLength, buffer + offset, sizeof(msgLength));
+				msgLength = ntohl(msgLength);
+				offset += sizeof(msgLength);
+
+				Packet pck(SHIP_SCORE);
+				pck.writePos += msgLength;
+				std::memcpy(pck.body, buffer + offset, msgLength);
+
+				int shipID;
+				uint32_t score;
+				pck >> shipID >> score;
+				serverData.totalClients[shipID].playerShip.score = score;
+
+				ForwardPacket(recvAddr, buffer, recvLen);
+				break;
+			}
 			default:
 				ForwardPacket(recvAddr, buffer, recvLen);
 				break;

@@ -353,10 +353,13 @@ void GameStateAsteroidsInit(void)
 /******************************************************************************/
 void GameStateAsteroidsUpdate(void)
 {
+	static float timer = 0.0f;
 	int playerInput = 0;
 	accumulatedTime += AEFrameRateControllerGetFrameTime();
 	while (accumulatedTime >= FIXED_DELTA_TIME)
 	{
+		timer += AEFrameRateControllerGetFrameTime();
+
 		// =========================================================
 		// update according to input
 		// =========================================================
@@ -531,8 +534,17 @@ void GameStateAsteroidsUpdate(void)
 			//	"Dir:" << gameData.spShip->dirCurr;
 		}
 
+		if (timer >= 2.0f)
+		{
+			timer = 0.0f;
+			Packet pck(CMDID::SHIP_SCORE);
+			pck << gameData.currID << gameData.playerScores[gameData.currID];
+			NetworkClient::Instance().CreateMessage(pck);
+		}
+
 		accumulatedTime -= FIXED_DELTA_TIME;
 	}
+
 
 }
 
@@ -1351,6 +1363,15 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 
 		GameObjInst *pInst = gameData.sGameObjInstList + asteroidID;
 		pInst->active = false;
+	}
+	break;
+	case SHIP_SCORE:
+	{
+		msg >> clientID;
+		uint32_t score;
+		msg >> score;
+
+		gameData.playerScores[clientID] = score;
 	}
 	break;
 	case CLIENT_REQ_HIGHSCORE:
