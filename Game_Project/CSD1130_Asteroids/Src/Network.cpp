@@ -100,10 +100,10 @@ int NetworkClient::Init()
 
 	udpClientAddress.sin_family = AF_INET;
 	udpClientAddress.sin_addr.s_addr = INADDR_ANY;
-	udpClientAddress.sin_port = htons(std::stoi(clientUDPPortString));
+	udpClientAddress.sin_port = htons((u_short)std::stoi(clientUDPPortString));
 
 	udpServerAddress.sin_family = AF_INET;
-	udpServerAddress.sin_port = htons(std::stoi(udpPortString));
+	udpServerAddress.sin_port = htons((u_short)std::stoi(udpPortString));
 	inet_pton(AF_INET, serverIP.c_str(), &udpServerAddress.sin_addr);
 
 
@@ -131,6 +131,8 @@ int NetworkClient::Init()
 	//	std::lock_guard<std::mutex> lock(outMutex);
 	//	outgoingMessages.push(newPlayer.ToString());
 	//}
+
+	return 1;
 }
 
 NetworkClient::~NetworkClient()
@@ -225,7 +227,7 @@ void  NetworkClient::SendSingularMessage(SOCKET clientSocket, Packet msg)
 
 	// copy the body into the msg
 	memcpy(buffer + headerOffset, msg.body, msg.writePos);
-	headerOffset += msg.writePos;
+	headerOffset += (int)msg.writePos;
 
 	int sentBytes = sendto(clientSocket, buffer, headerOffset, 0,
 		reinterpret_cast<sockaddr*>(&udpServerAddress), sizeof(udpServerAddress));
@@ -238,8 +240,9 @@ void  NetworkClient::SendSingularMessage(SOCKET clientSocket, Packet msg)
 }
 //Take out the header and parse the message before adding it into the queue
 //Queue msg should be the commandID and the message
-void NetworkClient::ReceiveMessages(SOCKET udpSocket)
+void NetworkClient::ReceiveMessages(SOCKET _udpSocket)
 {
+	UNREFERENCED_PARAMETER(_udpSocket);
 	sockaddr_in senderAddr;
 	int senderAddrSize = sizeof(senderAddr);
 	

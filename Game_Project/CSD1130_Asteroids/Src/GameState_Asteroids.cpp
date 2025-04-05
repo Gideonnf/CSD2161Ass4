@@ -391,7 +391,7 @@ void GameStateAsteroidsUpdate(void)
 	accumulatedTime += AEFrameRateControllerGetFrameTime();
 	while (accumulatedTime >= FIXED_DELTA_TIME)
 	{
-		timer += AEFrameRateControllerGetFrameTime();
+		timer += (float)AEFrameRateControllerGetFrameTime();
 
 		// =========================================================
 		// update according to input
@@ -956,7 +956,7 @@ void CheckGOCollision()
 				switch (pInst_2->pObject->type)
 				{
 				case TYPE_BULLET:
-					if (pInst_2->serverID < 4 + (gameData.currID * BULLET_ID_MAX) || pInst_2->serverID > 4 + ((gameData.currID + 1) * BULLET_ID_MAX))
+					if (pInst_2->serverID < (4 + (gameData.currID * (int)BULLET_ID_MAX)) || pInst_2->serverID > (4 + ((gameData.currID + 1) * (int)BULLET_ID_MAX)))
 						break;
 					if (CollisionIntersection_RectRect(pInst_1->boundingBox, pInst_1->velCurr, pInst_2->boundingBox, pInst_2->velCurr, firstTimeOfCollision))
 					{
@@ -1067,6 +1067,7 @@ void UpdateGOCollisionBoxes()
 /// <param name="_scale">Scale of the new GO</param>
 GameObjInst *CreateAsteroid(AEVec2 _pos, AEVec2 _vel, AEVec2 _scale, float dir)
 {
+	UNREFERENCED_PARAMETER(dir);
 	return gameObjInstCreate(TYPE_ASTEROID, &_scale, &_pos, &_vel, 0.0f);
 
 }
@@ -1153,6 +1154,7 @@ void RenderMeshObj(GameObjInst *GO)
 
 void ProcessPacketMessages(Packet &msg, GameData &data)
 {
+	UNREFERENCED_PARAMETER(data);
 	if (msg.id == PACKET_ERROR) return;
 
 	//Packet newPacket(msg);
@@ -1277,6 +1279,7 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 	}
 	// switch cases
 	case ASTEROID_CREATED: // temporary
+	{
 
 		int numOfAsteroids;
 		msg >> numOfAsteroids;
@@ -1299,6 +1302,7 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 		}
 		//ProcessNewAsteroid(msg, data);
 		break;
+	}
 	case ASTEROID_UPDATE:
 	{
 		int numOfAsteroids;
@@ -1357,7 +1361,7 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 		msg >> dir;
 
 		GameObjInst *pInst = bulletObjInstCreate(&pos, &vel, dir, bulletID);
-
+		UNREFERENCED_PARAMETER(pInst);
 		// Calculate timeDiff
 	}
 	break;
@@ -1517,6 +1521,8 @@ void ProcessPacketMessages(Packet &msg, GameData &data)
 
 void ProcessNewAsteroid(Packet &packet, GameData &data)
 {
+	UNREFERENCED_PARAMETER(packet);
+	UNREFERENCED_PARAMETER(data);
 	//float xPos;
 	//packet >> xPos;
 

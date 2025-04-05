@@ -137,7 +137,7 @@ float generateRandomFloat(float min, float max) {
 	std::uniform_real_distribution<> dis(min, max);
 
 	// Generate a random float
-	return dis(gen);
+	return (float)dis(gen);
 }
 
 Asteroid RandomiseAsteroid(float min_xPos, float max_xPos, float min_yPos, float max_yPos)
@@ -530,7 +530,7 @@ int main()
 
 					// body of the message
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
+					offset += (int)msg.data.writePos;
 					sendto(udpListenerSocket, buffer, offset, 0, (sockaddr*)&otherAddr, sizeof(otherAddr));
 					break;
 				}
@@ -539,7 +539,7 @@ int main()
 					// this packet contains every player data
 					// create the message buffer ifrst
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
+					offset += (int)msg.data.writePos;
 
 					// loop through every client to send this msg to them
 					for (int i = 0; i < MAX_CONNECTION; ++i)
@@ -568,7 +568,7 @@ int main()
 				{
 					//msg.data << msg.sessionID;
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
+					offset += (int)msg.data.writePos;
 					for (int i = 0; i < MAX_CONNECTION; ++i)
 					{
 						ClientInfo& client = serverData.totalClients[i];
@@ -597,7 +597,7 @@ int main()
 				case ASTEROID_CREATED:
 				{
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
+					offset += (int)msg.data.writePos;
 					for (int i = 0; i < MAX_CONNECTION; ++i)
 					{
 						ClientInfo& client = serverData.totalClients[i];
@@ -624,7 +624,7 @@ int main()
 				}
 				case PLAYER_DC:
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
+					offset += (int)msg.data.writePos;
 
 					for (int i = 0; i < MAX_CONNECTION; ++i)
 					{
@@ -644,7 +644,7 @@ int main()
 					// This would be used when the server initiates a player join (not common)
 					// Typically player join is client-initiated and handled in UDPReceiveHandler
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
+					offset += (int)msg.data.writePos;
 
 					for (int i = 0; i < MAX_CONNECTION; ++i)
 					{
@@ -674,7 +674,7 @@ int main()
 					break;
 				default:
 					std::memcpy(buffer + offset, msg.data.body, msg.data.writePos);
-					offset += msg.data.writePos;
+					offset += (int)msg.data.writePos;
 
 					for (int i = 0; i < MAX_CONNECTION; ++i)
 					{
